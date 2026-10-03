@@ -1,0 +1,9 @@
+id,email,full_name,phone,enrollment_no,college,department,address,headline,bio,avatar_url,portfolio
+1afabf91-4cfb-4db4-8b31-242c00c7a13c,sahil.raj@example.com,Sahil Raj,,DEMO001,Demo College,Computer Science & Engineering,Campus,UI/UX & Graphic Designer,"Can design posters, pitch decks, and Instagram posts for college events.",,
+cde2fd2d-0f9d-4bac-aff6-bb7b5efb2a98,sahil.ranjan@example.com,Sahil Ranjan,,DEMO002,Demo College,Computer Science & Engineering,Campus,Video Editor & Motion Designer,"Fest aftermovies, reels, and short promos with clean cuts and sound.",,
+b9c70cb5-5a3b-4801-ac23-bbff6fbdea28,gautam.raj.dangi@example.com,Gautam Raj Dangi,,DEMO003,Demo College,Computer Science & Engineering,Campus,Full-Stack Web Developer,"Builds club websites, portfolios, and registration forms that load fast.",,
+16a0a99a-336c-4b7c-a3c2-1e0155c2525a,saloni.kumari@example.com,Saloni Kumari,,DEMO004,Demo College,Computer Science & Engineering,Campus,Presentation & Slide Designer,"Turns messy notes into clear slides for seminars, vivas, and competitions.",,
+cdc0cc5b-0999-4291-b139-e60ee750d3f8,riya.sharma@example.com,Riya Sharma,,DEMO005,Demo College,Mathematics,Campus,Maths & Statistics Tutor,Exam-focused sessions with solved past papers and quick doubt clearing.,,
+5d674837-b29f-45b3-8f78-28a06cb6cc80,arjun.verma@example.com,Arjun Verma,,DEMO006,Demo College,Design & Media,Campus,Event & Portrait Photographer,"Natural-light portraits, LinkedIn headshots, and fest coverage.",,
+d9679cac-e2e9-47c7-99ca-1af118b9752e,karan.singh@example.com,Karan Singh,,DEMO007,Demo College,Information Technology,Campus,PC Repair & Software Setup,"Fixes slow laptops, installs software, and sets up dev tools quickly.",,
+8c35cb91-f482-4656-bcc5-525bfec8f9cd,meera.nair@example.com,Meera Nair,,DEMO008,Demo College,Electronics & Communication,Campus,Logo & Brand Designer,"Logos and brand kits for clubs, startups, and student projects.",,

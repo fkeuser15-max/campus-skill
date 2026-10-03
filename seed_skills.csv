@@ -1,0 +1,25 @@
+user_id,category,title,description,tags,price
+1afabf91-4cfb-4db4-8b31-242c00c7a13c,Graphic Design,Poster & banner design,Event posters in print and social sizes,"Figma,Photoshop,Canva",₹300
+1afabf91-4cfb-4db4-8b31-242c00c7a13c,Graphic Design,Pitch deck design,Clean 10–15 slide decks,,₹800
+1afabf91-4cfb-4db4-8b31-242c00c7a13c,Graphic Design,UI/UX mockups,Figma screens for apps and sites,,"₹1,500"
+cde2fd2d-0f9d-4bac-aff6-bb7b5efb2a98,Video Editing,Reels & shorts,Vertical edits with captions,"Premiere Pro,After Effects,DaVinci",₹400
+cde2fd2d-0f9d-4bac-aff6-bb7b5efb2a98,Video Editing,Event aftermovie,2–3 min highlight film,,"₹2,000"
+cde2fd2d-0f9d-4bac-aff6-bb7b5efb2a98,Video Editing,Intro/logo animation,5–10 sec motion graphics,,₹600
+b9c70cb5-5a3b-4801-ac23-bbff6fbdea28,Web Development,Portfolio site,Responsive one-page site,"Node.js,React,MongoDB","₹1,500"
+b9c70cb5-5a3b-4801-ac23-bbff6fbdea28,Web Development,Registration portal,Forms with a database backend,,"₹3,000"
+b9c70cb5-5a3b-4801-ac23-bbff6fbdea28,Web Development,Bug fixing & mentoring,Hourly help on your project,,₹200/hr
+16a0a99a-336c-4b7c-a3c2-1e0155c2525a,Presentation Design,Seminar deck,Clean slides with visuals,"PowerPoint,Canva,Storytelling",₹500
+16a0a99a-336c-4b7c-a3c2-1e0155c2525a,Presentation Design,Competition pitch,Story-driven deck and script,,"₹1,000"
+16a0a99a-336c-4b7c-a3c2-1e0155c2525a,Presentation Design,Slide makeover,Fix your existing deck,,₹250
+cdc0cc5b-0999-4291-b139-e60ee750d3f8,Tutoring & Academics,1-on-1 tutoring,"Calculus, algebra, probability","Calculus,Linear Algebra,Stats",₹150/hr
+cdc0cc5b-0999-4291-b139-e60ee750d3f8,Tutoring & Academics,Exam crash course,3-day revision plan,,₹600
+cdc0cc5b-0999-4291-b139-e60ee750d3f8,Tutoring & Academics,Assignment review,Check solutions and method,,₹100
+5d674837-b29f-45b3-8f78-28a06cb6cc80,Photography,Headshots,20-minute campus shoot,"Lightroom,Portraits,Events",₹400
+5d674837-b29f-45b3-8f78-28a06cb6cc80,Photography,Event coverage,Per-hour fest photography,,₹700/hr
+5d674837-b29f-45b3-8f78-28a06cb6cc80,Photography,Photo editing,Retouch and colour grade,,₹30/photo
+d9679cac-e2e9-47c7-99ca-1af118b9752e,Computer Assistance,Laptop tune-up,Speed up and clean install,"Windows,Linux,Troubleshooting",₹300
+d9679cac-e2e9-47c7-99ca-1af118b9752e,Computer Assistance,Dev environment setup,"Python, Node, Git, VS Code",,₹200
+d9679cac-e2e9-47c7-99ca-1af118b9752e,Computer Assistance,Data recovery help,Try recovering lost files,,₹400
+8c35cb91-f482-4656-bcc5-525bfec8f9cd,Graphic Design,Logo design,"Three concepts, one revision round","Illustrator,Branding,Canva",₹700
+8c35cb91-f482-4656-bcc5-525bfec8f9cd,Graphic Design,Club brand kit,"Logo, colours, and fonts",,"₹1,800"
+8c35cb91-f482-4656-bcc5-525bfec8f9cd,Graphic Design,Social media pack,10 post templates,,₹900

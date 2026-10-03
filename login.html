@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Login – Campus Skill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="stylesheet.css"></head><body>
+<header id="subhdr"></header>
+<main class="page"><div class="wrap"><div class="panel">
+  <h1>Welcome to Campus Skill</h1>
+  <p class="sub">Use a one-time code sent to your email. No password needed.</p>
+  <div class="tabs" id="tabs" data-t="0" role="tablist">
+    <span class="ind"></span>
+    <button role="tab" aria-selected="true" data-m="login">Login</button>
+    <button role="tab" aria-selected="false" data-m="register">Register</button>
+  </div>
+  <!-- Step 1: details + send OTP -->
+  <form id="f1" class="stack" novalidate>
+    <div><label for="email">Email</label><input id="email" type="email" autocomplete="email" placeholder="you@college.edu"></div>
+    <div class="fgrid" id="regFields" hidden>
+      <div class="full"><label for="full_name">Full name</label><input id="full_name" autocomplete="name"></div>
+      <div><label for="phone">Phone</label><input id="phone" type="tel" autocomplete="tel" placeholder="+91 98765 43210"></div>
+      <div><label for="enrollment_no">Enrollment no.</label><input id="enrollment_no"></div>
+      <div class="full"><label for="college">College</label><input id="college"></div>
+      <div class="full"><label for="address">Address</label><textarea id="address" style="min-height:76px"></textarea></div>
+    </div>
+    <button class="btn btn-p" id="send" type="submit">Send OTP</button>
+  </form>
+  <!-- Step 2: enter OTP -->
+  <form id="f2" class="stack" hidden novalidate>
+    <p id="sentTo" style="font-weight:600"></p>
+    <div><label for="otp">Enter the code</label><input id="otp" class="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="10"></div>
+    <button class="btn btn-p" id="verify" type="submit">Verify &amp; continue</button>
+    <div><button type="button" class="link" id="resend">Resend code</button> &nbsp;·&nbsp; <button type="button" class="link" id="change">Change email</button></div>
+  </form>
+  <p class="msg" id="msg" role="status"></p>
+</div></div></main>
+<div class="toast" id="toast" role="status"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+const { sb, $ } = CS, q = new URLSearchParams(location.search);
+const next = ["skill.html", "profile.html", "index.html"].includes(q.get("next")) ? q.get("next") : null;
+let mode = "login", reg = null, cd;
+const say = (t, c = "") => { $("msg").textContent = t; $("msg").className = "msg " + c };
+const mail = () => $("email").value.trim().toLowerCase();
+function step(n) { $("f1").hidden = n !== 1; $("f2").hidden = n !== 2 }
+function setMode(m) {
+  mode = m; $("tabs").dataset.t = m === "register" ? 1 : 0;
+  $("tabs").querySelectorAll("button").forEach(b => b.setAttribute("aria-selected", b.dataset.m === m));
+  $("regFields").hidden = m !== "register"; step(1); say("");
+}
+$("tabs").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (b) setMode(b.dataset.m) });
+function cooldown() {
+  let s = 30; const b = $("resend"); clearInterval(cd); b.disabled = true;
+  const tick = () => { if (s <= 0) { b.disabled = false; b.textContent = "Resend code"; clearInterval(cd) } else b.textContent = `Resend code (${s--}s)` };
+  tick(); cd = setInterval(tick, 1000);
+}
+async function sendOtp() {
+  if (!CS.ok) return say("Add your Supabase URL and anon key in config.js first.", "err");
+  if (!/^\S+@\S+\.\S+$/.test(mail())) return say("Enter a valid email address.", "err");
+  if (mode === "register") {
+    reg = {}; ["full_name", "phone", "enrollment_no", "college", "address"].forEach(k => reg[k] = $(k).value.trim());
+    if (Object.values(reg).some(v => !v)) return say("Fill in every field to register.", "err");
+    if (!/^\+?[0-9 \-]{10,15}$/.test(reg.phone)) return say("Enter a valid phone number.", "err");
+  }
+  $("send").disabled = true; say("Sending code…");
+  const { error } = await sb.auth.signInWithOtp({ email: mail(), options: { shouldCreateUser: mode === "register", data: mode === "register" ? reg : undefined } });
+  $("send").disabled = false;
+  if (error) return say(/not allowed|not found/i.test(error.message) ? "No account found for this email. Switch to Register." : error.message, "err");
+  $("sentTo").textContent = "We sent a code to " + mail() + "."; step(2); say(""); $("otp").value = ""; $("otp").focus(); cooldown();
+}
+$("f1").addEventListener("submit", e => { e.preventDefault(); sendOtp() });
+$("resend").addEventListener("click", sendOtp);
+$("change").addEventListener("click", () => { step(1); say("") });
+$("f2").addEventListener("submit", async e => {
+  e.preventDefault();
+  const token = $("otp").value.trim();
+  if (!/^\d{6,10}$/.test(token)) return say("Enter the numeric code from your email.", "err");
+  $("verify").disabled = true; say("Verifying…");
+  const { data, error } = await sb.auth.verifyOtp({ email: mail(), token, type: "email" });
+  $("verify").disabled = false;
+  if (error) return say("That code is wrong or expired. Try again or resend.", "err");
+  say("Success! Redirecting…", "ok");
+  location.href = next || (mode === "register" ? "profile.html" : "index.html");
+});
+(async () => { if (!CS.ok) return say("Add your Supabase URL and anon key in config.js to enable login.", "err");
+  if (await CS.session()) location.href = next || "index.html"; })();
+if (q.get("mode") === "register") setMode("register");
+</script></body></html>

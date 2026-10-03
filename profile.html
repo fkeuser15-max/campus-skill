@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My profile – Campus Skill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="stylesheet.css"></head><body>
+<header id="subhdr"></header>
+<main class="page"><div class="wrap" id="root"><p class="msg" id="msg" role="status"></p></div></main>
+<div class="toast" id="toast" role="status"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+const { sb, $, esc, ini, toast } = CS;
+let U, P, S = [], M = [], edit = false;
+const pfList = () => ((P && P.portfolio) || "").split(",").map(u => u.trim()).filter(Boolean);
+const OPT = [["department", "Department"], ["headline", "Headline (shown on your card)"], ["bio", "Short bio"]];
+const F = [["full_name", "Full name"], ["phone", "Phone"], ["enrollment_no", "Enrollment no."], ["college", "College"], ["address", "Address"]];
+(async () => {
+  if (!CS.ok) { $("msg").className = "msg err"; $("msg").textContent = "Add your Supabase URL and anon key in config.js first."; return }
+  const s = await CS.session();
+  if (!s) { location.href = "login.html?next=profile.html"; return }
+  U = s.user; await load();
+})();
+async function load() {
+  P = await CS.profile(U.id);
+  const r = await sb.from("skills").select("*").eq("user_id", U.id).order("created_at", { ascending: false });
+  S = r.data || [];
+  const m = await sb.from("messages").select("*").eq("to_user", U.id).order("created_at", { ascending: false }).limit(50);
+  M = m.data || []; if (!P) edit = true; draw();
+  const unread = M.filter(x => !x.is_read).map(x => x.id);   // mark as read after showing the "new" highlight
+  if (unread.length) sb.from("messages").update({ is_read: true }).in("id", unread);
+}
+function draw() {
+  const p = P || { email: U.email };
+  const av = p.avatar_url ? `<img class="bigav" src="${esc(p.avatar_url)}" alt="Profile photo">` : `<span class="bigav" aria-hidden="true">${esc(ini(p.full_name || U.email))}</span>`;
+  const view = `<div class="dl"><div><small>Email</small><b>${esc(p.email)}</b></div>${F.slice(1).concat(OPT).map(([k, l]) => `<div><small>${l}</small><b>${esc(p[k] || "—")}</b></div>`).join("")}</div>`;
+  const pf = pfList(), box = u => `background:url('${esc(u)}') center/cover`;
+  const pfView = pf.length ? `<h3 style="margin:22px 0 10px">Portfolio</h3><div class="pf">${pf.map(u => `<div style="${box(u)}"></div>`).join("")}</div>` : "";
+  const pfEdit = `<div><label for="pfiles">Portfolio images (up to 8, 2 MB each)</label><div class="pf" style="margin-bottom:10px">${pf.map((u, i) => `<div style="${box(u)};position:relative"><button type="button" class="x" data-rmpf="${i}" aria-label="Remove image" style="top:4px;right:4px;width:30px;height:30px;font-size:14px">✕</button></div>`).join("")}</div><input id="pfiles" type="file" accept="image/*" multiple></div>`;
+  const form = `<form id="pf" class="stack" novalidate><div><label for="photo">Profile photo</label><input id="photo" type="file" accept="image/*"></div>
+    <div class="fgrid"><div class="full"><label for="email">Email (cannot be changed)</label><input id="email" value="${esc(p.email)}" disabled></div>
+    ${F.concat(OPT).map(([k, l]) => `<div class="${["address", "full_name", "college", "headline", "bio"].includes(k) ? "full" : ""}"><label for="${k}">${l}</label><input id="${k}" value="${esc(p[k] || "")}"></div>`).join("")}</div>
+    ${pfEdit}<button class="btn btn-p" type="submit">Save details</button></form>`;
+  const unread = M.filter(m => !m.is_read).length;
+  const msgs = M.length ? M.map(m => `<div class="sk" style="${m.is_read ? "" : "border-color:var(--brand)"}"><div class="sk-h"><b>${esc(m.from_name || "A student")}</b><small style="color:var(--muted)">${new Date(m.created_at).toLocaleString()}</small></div><p style="color:var(--ink);white-space:pre-wrap">${esc(m.body)}</p>${m.from_email ? `<a class="btn btn-o btn-sm" style="width:fit-content" href="mailto:${esc(m.from_email)}?subject=${encodeURIComponent("Re: your message on Campus Skill")}">Reply by email</a>` : ""}</div>`).join("") : `<p class="sub" style="margin:14px 0 0">No messages yet.</p>`;
+  const skills = S.length ? S.map(s => edit
+    ? `<div class="sk"><input id="t-${s.id}" value="${esc(s.title)}" aria-label="Skill title"><textarea id="d-${s.id}" aria-label="Description">${esc(s.description)}</textarea>
+       <div class="chan"><button class="btn btn-p btn-sm" data-save="${s.id}">Save skill</button><button class="btn btn-o btn-sm" data-del="${s.id}">Delete</button></div></div>`
+    : `<div class="sk"><div class="sk-h"><b>${esc(s.title)}</b><span class="badge">${esc(s.category)}</span></div><p>${esc(s.description)}</p></div>`).join("")
+    : `<p class="sub" style="margin:14px 0 0">No skills listed yet. Add your first one.</p>`;
+  $("root").innerHTML = `<div class="panel pw"><div class="pr-head">${av}
+    <div style="flex:1;min-width:200px"><h1>${esc(p.full_name || "Complete your profile")}</h1><p class="sub" style="margin:0 0 8px">${esc(p.college || "")}</p><span class="badge g">✓ Verified student</span></div>
+    <div class="chan"><button class="btn btn-o btn-sm" data-a="edit">${edit ? "Done editing" : "✎ Edit details & skills"}</button><button class="btn btn-o btn-sm" data-a="out">Log out</button></div></div>
+    ${edit ? form : view + pfView}</div>
+    <div class="panel pw"><div class="sk-h"><h2>My skills</h2><a class="btn btn-a btn-sm" href="skill.html">+ Add skill</a></div>${skills}</div>
+    <div class="panel pw"><div class="sk-h"><h2>Messages ${unread ? `<span class="badge">${unread} new</span>` : ""}</h2></div>${msgs}</div>`;
+}
+$("root").addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.a === "edit") { if (!P) return toast("Save your details first."); edit = !edit; draw() }
+  if (b.dataset.a === "out") { await sb.auth.signOut(); location.href = "index.html" }
+  if (b.dataset.rmpf !== undefined) {
+    const list = pfList(), [gone] = list.splice(+b.dataset.rmpf, 1);
+    const { error } = await sb.from("profiles").update({ portfolio: list.join(",") }).eq("id", U.id);
+    if (error) return toast(error.message);
+    const key = (gone.split("/portfolio/")[1] || "").split("?")[0];
+    if (key) await sb.storage.from("portfolio").remove([decodeURIComponent(key)]);
+    P.portfolio = list.join(","); draw(); return;
+  }
+  if (b.dataset.save) {
+    const id = b.dataset.save, title = $("t-" + id).value.trim(), description = $("d-" + id).value.trim();
+    if (!title || !description) return toast("Title and description can't be empty.");
+    const { error } = await sb.from("skills").update({ title, description }).eq("id", id);
+    toast(error ? error.message : "Skill updated."); if (!error) { const s = S.find(x => x.id === id); s.title = title; s.description = description }
+  }
+  if (b.dataset.del && confirm("Delete this skill?")) {
+    const { error } = await sb.from("skills").delete().eq("id", b.dataset.del);
+    if (error) return toast(error.message); S = S.filter(x => x.id !== b.dataset.del); draw(); toast("Skill deleted.");
+  }
+});
+$("root").addEventListener("submit", async e => {
+  e.preventDefault();
+  const row = { id: U.id, email: U.email }; F.concat(OPT).forEach(([k]) => row[k] = $(k).value.trim());
+  if (F.some(([k]) => !row[k])) return toast("Fill in every field.");
+  const f = $("photo").files[0]; row.avatar_url = P?.avatar_url || null;
+  if (f) {
+    if (f.size > 2e6) return toast("Photo must be under 2 MB.");
+    const path = U.id + "/avatar", up = await sb.storage.from("avatars").upload(path, f, { upsert: true, contentType: f.type });
+    if (up.error) return toast(up.error.message);
+    row.avatar_url = sb.storage.from("avatars").getPublicUrl(path).data.publicUrl + "?t=" + Date.now();
+  }
+  const list = pfList(), files = [...($("pfiles") ? $("pfiles").files : [])];
+  if (list.length + files.length > 8) return toast("You can keep up to 8 portfolio images.");
+  for (const f of files) {
+    if (f.size > 2e6) return toast(f.name + " is over 2 MB.");
+    const path = `${U.id}/${Date.now()}-${f.name.replace(/[^\w.-]/g, "_")}`, r = await sb.storage.from("portfolio").upload(path, f, { contentType: f.type });
+    if (r.error) return toast(r.error.message);
+    list.push(sb.storage.from("portfolio").getPublicUrl(path).data.publicUrl);
+  }
+  row.portfolio = list.join(",");
+  const { error } = await sb.from("profiles").upsert(row);
+  if (error) return toast(error.message);
+  toast("Profile saved."); await load();
+});
+</script></body></html>

@@ -1,0 +1,7 @@
+<!-- Supabase -> Authentication -> Email Templates.
+     Paste this body into BOTH "Confirm signup" (new users) and "Magic Link" (existing users).
+     {{ .Token }} is what makes the email contain a code instead of a link. -->
+<h2>Your Campus Skill code</h2>
+<p>Enter this code to continue:</p>
+<p style="font-size:28px;font-weight:700;letter-spacing:6px">{{ .Token }}</p>
+<p>It expires soon. If you didn't request it, ignore this email.</p>
