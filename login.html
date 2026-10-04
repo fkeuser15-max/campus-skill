@@ -64,9 +64,15 @@ async function sendOtp() {
     if (!/^\+?[0-9 \-]{10,15}$/.test(reg.phone)) return say("Enter a valid phone number.", "err");
   }
   $("send").disabled = true; say("Sending code…");
+  if (mode === "register") {   // one account per email (Gmail dots and +tags count as the same address)
+    const { data: taken, error: ce } = await sb.rpc("email_registered", { p_email: mail() });
+    if (ce) { $("send").disabled = false; return say("Could not check this email. Run 4_ratings_projects.sql in Supabase. (" + ce.message + ")", "err") }
+    if (taken) { $("send").disabled = false; setMode("login"); return say("This email is already registered. Please log in instead.", "err") }
+  }
   const { error } = await sb.auth.signInWithOtp({ email: mail(), options: { shouldCreateUser: mode === "register", data: mode === "register" ? reg : undefined } });
   $("send").disabled = false;
-  if (error) return say(/not allowed|not found/i.test(error.message) ? "No account found for this email. Switch to Register." : error.message, "err");
+  if (error && /smtp|535|sending .*email|email.*(send|sent)|BadCredentials|rate limit/i.test(error.message)) return say(/rate limit/i.test(error.message) ? "Too many emails requested. Wait a few minutes, or raise the limit in Supabase -> Authentication -> Rate Limits." : "Could not send the email. In Supabase -> Authentication -> SMTP Settings, re-enter your Gmail address and a fresh 16-letter app password (no spaces).", "err");
+  if (error) return say(/database error|already/i.test(error.message) ? "This email is already registered. Please log in instead." : /not allowed|not found/i.test(error.message) ? "No account found for this email. Switch to Register." : error.message, "err");
   $("sentTo").textContent = "We sent a code to " + mail() + "."; step(2); say(""); $("otp").value = ""; $("otp").focus(); cooldown();
 }
 $("f1").addEventListener("submit", e => { e.preventDefault(); sendOtp() });

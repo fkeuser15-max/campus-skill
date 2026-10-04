@@ -144,9 +144,22 @@
         <h3>Skills & services</h3>
         <div class="svc" id="mSvc"></div>
       </div>
+      <div id="pjBox" hidden><h3>Sample projects</h3><div class="pjs" id="mPj"></div></div>
       <div id="pfBox">
         <h3>Portfolio</h3>
         <div class="pf" id="mPf"></div>
+      </div>
+      <div id="rvBox">
+        <h3>Ratings &amp; reviews</h3>
+        <div id="mRev"></div>
+        <form class="cf" id="rf" novalidate style="margin-top:14px">
+          <h3 style="margin:0;font-size:16px">Rate a skill</h3>
+          <div><label for="rv-skill">Skill</label><select id="rv-skill"></select></div>
+          <div><label id="rv-lbl">Your rating</label><div id="rv-stars" role="group" aria-labelledby="rv-lbl"><button type="button" class="star" data-s="1" aria-label="1 star">★</button><button type="button" class="star" data-s="2" aria-label="2 stars">★</button><button type="button" class="star" data-s="3" aria-label="3 stars">★</button><button type="button" class="star" data-s="4" aria-label="4 stars">★</button><button type="button" class="star" data-s="5" aria-label="5 stars">★</button></div></div>
+          <div><label for="rv-text">Public review (optional)</label><textarea id="rv-text" maxlength="1000" placeholder="How was your experience?"></textarea></div>
+          <button class="btn btn-p" id="rv-send" type="submit">Post review</button>
+          <p id="rv-msg" role="status" style="font-weight:600;font-size:14px"></p>
+        </form>
       </div>
       <form class="cf" id="cf" novalidate>
         <h3 style="margin:0">Message <span id="mFirst"></span></h3>

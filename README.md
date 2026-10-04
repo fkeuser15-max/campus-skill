@@ -1,16 +1,15 @@
-# Campus Skill: Supabase only (email code login, free Gmail as the email sender)
+# Campus Skill: fixes for "projects bucket missing" and Gmail "535 Username and Password not accepted"
 
-1. config.js: paste Supabase URL + anon key (Project Settings -> API).
-2. Gmail app password: Google Account -> Security -> turn on 2-Step Verification -> App passwords -> create "Campus Skill" -> copy the 16 characters.
-3. Supabase -> Authentication -> SMTP Settings -> enable Custom SMTP:
-   host smtp.gmail.com, port 465, username = your Gmail, password = the app password, sender email = your Gmail, sender name = Campus Skill.
-4. Authentication -> Email Templates: paste email_templates.html into "Confirm signup" AND "Magic Link" (adds the code).
-5. Authentication -> Rate Limits: raise the emails-per-hour limit while testing.
-6. Authentication -> Providers -> Email: enabled, and "Allow new users to sign up" ON.
-7. Authentication -> URL Configuration: Site URL = where you run the site (e.g. http://localhost:5500).
-8. SQL Editor, one query each, in this order: 1_database.sql, 2_storage.sql, 3_check.sql.
-9. Demo data (optional): Table Editor -> profiles -> Import CSV seed_profiles.csv, then skills -> seed_skills.csv.
-10. Messages (Edge Function), with the Supabase CLI:
-    supabase functions deploy send-message
-    supabase secrets set SMTP_HOST=smtp.gmail.com SMTP_PORT=465 SMTP_USER=you@gmail.com SMTP_PASS=<app password> SMTP_FROM="Campus Skill <you@gmail.com>"
-11. Run the folder through a local server (VS Code Live Server), not by double-clicking index.html.
+## A. projects bucket
+Supabase -> SQL Editor -> paste ALL of 5_storage_projects.sql -> Run. The result table at the bottom must list avatars, portfolio and projects.
+(No SQL alternative: Storage -> New bucket -> name `projects` -> turn Public ON -> Create, then run only section 3 of the file.)
+
+## B. Gmail error 535 5.7.8 (credentials rejected). Fix it in TWO places with the same values
+1. Google Account (the same Gmail you use as SMTP user) -> Security -> 2-Step Verification must be ON.
+2. Security -> App passwords -> delete the old "Campus Skill" one -> create a new one -> copy the 16 letters. Type them WITHOUT spaces.
+   (Use your normal Gmail password here and you get exactly this error. College/Workspace accounts often block app passwords: use a personal @gmail.com.)
+3. Supabase -> Authentication -> SMTP Settings (sends the login codes): host smtp.gmail.com, port 465, username = FULL address you@gmail.com,
+   password = the new app password, sender email = the same address. Click Save.
+4. Supabase -> Edge Functions -> Secrets (sends student messages): SMTP_USER = you@gmail.com, SMTP_PASS = the new app password, SMTP_HOST = smtp.gmail.com, SMTP_PORT = 465,
+   SMTP_FROM = Campus Skill <you@gmail.com>. Then redeploy: supabase functions deploy send-message
+5. If Google emailed you a "critical security alert / sign-in blocked", open it and approve, then try again.

@@ -11,7 +11,8 @@
 <script src="config.js"></script><script src="app.js"></script>
 <script>
 const { sb, $, esc, ini, toast } = CS;
-let U, P, S = [], M = [], edit = false;
+let U, P, S = [], M = [], J = [], R = {}, pj = null, edit = false;
+const imgsOf = s => (s || "").split(",").map(u => u.trim()).filter(Boolean);
 const pfList = () => ((P && P.portfolio) || "").split(",").map(u => u.trim()).filter(Boolean);
 const OPT = [["department", "Department"], ["headline", "Headline (shown on your card)"], ["bio", "Short bio"]];
 const F = [["full_name", "Full name"], ["phone", "Phone"], ["enrollment_no", "Enrollment no."], ["college", "College"], ["address", "Address"]];
@@ -25,10 +26,59 @@ async function load() {
   P = await CS.profile(U.id);
   const r = await sb.from("skills").select("*").eq("user_id", U.id).order("created_at", { ascending: false });
   S = r.data || [];
+  R = {}; if (S.length) { const rr = await sb.from("skill_ratings").select("*").in("skill_id", S.map(x => x.id)); (rr.data || []).forEach(x => R[x.skill_id] = x) }
+  const pr = await sb.from("projects").select("*").eq("user_id", U.id).order("created_at", { ascending: false }); J = pr.data || [];
   const m = await sb.from("messages").select("*").eq("to_user", U.id).order("created_at", { ascending: false }).limit(50);
   M = m.data || []; if (!P) edit = true; draw();
   const unread = M.filter(x => !x.is_read).map(x => x.id);   // mark as read after showing the "new" highlight
   if (unread.length) sb.from("messages").update({ is_read: true }).in("id", unread);
+}
+const rateOf = id => { const r = R[id]; if (!r) return `<small style="color:var(--muted)">No reviews yet</small>`; const n = Math.round(r.avg_rating);
+  return `<span class="stars">${"★".repeat(n)}${"☆".repeat(5 - n)}</span> <small>${Number(r.avg_rating).toFixed(1)} (${r.review_count} review${r.review_count === 1 ? "" : "s"})</small>` };
+const grab = () => { if (!pj || !$("pj-title")) return; pj.title = $("pj-title").value; pj.description = $("pj-desc").value; pj.github_url = $("pj-gh").value; pj._vl = $("pj-video").value };
+function projPanel() {
+  const old = (pj && pj.video_url) || "", ext = old && !old.includes("/storage/v1/");
+  const form = pj ? `<form id="pjf" class="stack" novalidate style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px"><h3 style="margin:0">${pj.id ? "Edit project" : "New sample project"}</h3>
+    <div><label for="pj-title">Project title</label><input id="pj-title" maxlength="80" value="${esc(pj.title || "")}"></div>
+    <div><label for="pj-desc">Description</label><textarea id="pj-desc" maxlength="600" placeholder="What did you build and which tools did you use?">${esc(pj.description || "")}</textarea></div>
+    <div><label for="pj-gh">GitHub link (optional)</label><input id="pj-gh" type="url" placeholder="https://github.com/you/project" value="${esc(pj.github_url || "")}"></div>
+    <div><label for="pj-video">Video link (optional: YouTube or a direct .mp4 link)</label><input id="pj-video" type="url" value="${esc(pj._vl !== undefined ? pj._vl : (ext ? old : ""))}"></div>
+    <div><label for="pj-vfile">Or upload a video (mp4 or webm, up to 20 MB)</label><input id="pj-vfile" type="file" accept="video/mp4,video/webm">${old ? `<label style="font-weight:500;margin-top:8px"><input type="checkbox" id="pj-rmvid" style="width:auto;min-height:0"> Remove the current video</label>` : ""}</div>
+    <div><label for="pj-files">Pictures (up to 4 in total, 2 MB each)</label>
+      ${pj.images.length ? `<div class="pj-imgs" style="margin-bottom:8px">${pj.images.map((u, i) => `<div style="position:relative"><img src="${esc(u)}" alt=""><button type="button" class="x" style="top:4px;right:4px;width:30px;height:30px" data-rmimg="${i}" aria-label="Remove picture">✕</button></div>`).join("")}</div>` : ""}
+      <input id="pj-files" type="file" accept="image/*" multiple></div>
+    <div class="chan"><button class="btn btn-p" id="pj-save" type="submit">Save project</button><button class="btn btn-o" type="button" data-a="pjcancel">Cancel</button></div></form>` : "";
+  const items = J.length ? J.map(x => { const im = imgsOf(x.images);
+    return `<div class="sk"><div class="sk-h"><b>${esc(x.title)}</b><div class="chan"><button class="btn btn-o btn-sm" data-pjedit="${x.id}">Edit</button><button class="btn btn-o btn-sm" data-pjdel="${x.id}">Delete</button></div></div>
+      ${x.description ? `<p>${esc(x.description)}</p>` : ""}<div class="proj">${x.github_url ? `<a href="${esc(x.github_url)}" target="_blank" rel="noopener noreferrer">GitHub</a> ` : ""}${x.video_url ? "· 🎬 video " : ""}${im.length ? `· 🖼 ${im.length} picture${im.length === 1 ? "" : "s"}` : ""}</div>
+      ${im.length ? `<div class="pj-imgs">${im.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>` : ""}</div>` }).join("")
+    : `<p class="sub" style="margin:14px 0 0">No sample projects yet. Add one so people who need a service can see your work.</p>`;
+  return `<div class="panel pw"><div class="sk-h"><h2>My sample projects</h2><button class="btn btn-a btn-sm" data-a="pjnew">+ Add project</button></div>${items}${form}</div>`;
+}
+async function saveProject() {
+  const title = $("pj-title").value.trim(), description = $("pj-desc").value.trim(), gh = $("pj-gh").value.trim(), vl = $("pj-video").value.trim();
+  if (!title) return toast("Give the project a title.");
+  if (gh && !/^https:\/\/(www\.)?github\.com\//i.test(gh)) return toast("The GitHub link must start with https://github.com/");
+  if (vl && !/^https?:\/\//i.test(vl)) return toast("The video link must start with https://");
+  const imgs = [...pj.images], files = [...$("pj-files").files], vf = $("pj-vfile").files[0], rm = $("pj-rmvid") && $("pj-rmvid").checked;
+  if (imgs.length + files.length > 4) return toast("You can keep up to 4 pictures per project.");
+  if (files.some(f => f.size > 2e6)) return toast("Each picture must be under 2 MB.");
+  if (vf && vf.size > 2e7) return toast("The video file must be under 20 MB.");
+  const old = pj.video_url || "", ext = old && !old.includes("/storage/v1/");
+  $("pj-save").disabled = true; toast("Saving…");
+  const up = async f => {
+    const path = `${U.id}/${Date.now()}-${f.name.replace(/[^\w.-]/g, "_")}`, r = await sb.storage.from("projects").upload(path, f, { contentType: f.type });
+    if (r.error) throw new Error(/bucket not found/i.test(r.error.message) ? 'The "projects" storage bucket is missing. Run 5_storage_projects.sql in Supabase.' : r.error.message);
+    return sb.storage.from("projects").getPublicUrl(path).data.publicUrl;
+  };
+  try {
+    for (const f of files) imgs.push(await up(f));
+    let video = vl || (ext ? null : old) || null; if (rm && !vl) video = null; if (vf) video = await up(vf);
+    const row = { title, description: description || null, github_url: gh || null, video_url: video, images: imgs.join(",") || null };
+    const { error } = pj.id ? await sb.from("projects").update(row).eq("id", pj.id) : await sb.from("projects").insert({ ...row, user_id: U.id });
+    if (error) throw new Error(/relation|schema cache/i.test(error.message) ? "Run 4_ratings_projects.sql in Supabase first. (" + error.message + ")" : error.message);
+    pj = null; toast("Project saved."); await load();
+  } catch (err) { if ($("pj-save")) $("pj-save").disabled = false; toast(err.message) }
 }
 function draw() {
   const p = P || { email: U.email };
@@ -46,13 +96,14 @@ function draw() {
   const skills = S.length ? S.map(s => edit
     ? `<div class="sk"><input id="t-${s.id}" value="${esc(s.title)}" aria-label="Skill title"><textarea id="d-${s.id}" aria-label="Description">${esc(s.description)}</textarea>
        <div class="chan"><button class="btn btn-p btn-sm" data-save="${s.id}">Save skill</button><button class="btn btn-o btn-sm" data-del="${s.id}">Delete</button></div></div>`
-    : `<div class="sk"><div class="sk-h"><b>${esc(s.title)}</b><span class="badge">${esc(s.category)}</span></div><p>${esc(s.description)}</p></div>`).join("")
+    : `<div class="sk"><div class="sk-h"><b>${esc(s.title)}</b><span class="badge">${esc(s.category)}</span></div><div>${rateOf(s.id)}</div><p>${esc(s.description)}</p></div>`).join("")
     : `<p class="sub" style="margin:14px 0 0">No skills listed yet. Add your first one.</p>`;
   $("root").innerHTML = `<div class="panel pw"><div class="pr-head">${av}
     <div style="flex:1;min-width:200px"><h1>${esc(p.full_name || "Complete your profile")}</h1><p class="sub" style="margin:0 0 8px">${esc(p.college || "")}</p><span class="badge g">✓ Verified student</span></div>
     <div class="chan"><button class="btn btn-o btn-sm" data-a="edit">${edit ? "Done editing" : "✎ Edit details & skills"}</button><button class="btn btn-o btn-sm" data-a="out">Log out</button></div></div>
     ${edit ? form : view + pfView}</div>
     <div class="panel pw"><div class="sk-h"><h2>My skills</h2><a class="btn btn-a btn-sm" href="skill.html">+ Add skill</a></div>${skills}</div>
+    ${projPanel()}
     <div class="panel pw"><div class="sk-h"><h2>Messages ${unread ? `<span class="badge">${unread} new</span>` : ""}</h2></div>${msgs}</div>`;
 }
 $("root").addEventListener("click", async e => {
@@ -67,6 +118,17 @@ $("root").addEventListener("click", async e => {
     if (key) await sb.storage.from("portfolio").remove([decodeURIComponent(key)]);
     P.portfolio = list.join(","); draw(); return;
   }
+  if (b.dataset.a === "pjnew") { pj = { images: [] }; draw(); return }
+  if (b.dataset.a === "pjcancel") { pj = null; draw(); return }
+  if (b.dataset.pjedit) { const x = J.find(y => y.id === b.dataset.pjedit); pj = { ...x, images: imgsOf(x.images) }; draw(); return }
+  if (b.dataset.rmimg !== undefined) { grab(); pj.images.splice(+b.dataset.rmimg, 1); draw(); return }
+  if (b.dataset.pjdel && confirm("Delete this project?")) {
+    const x = J.find(y => y.id === b.dataset.pjdel), { error } = await sb.from("projects").delete().eq("id", x.id);
+    if (error) return toast(error.message);
+    const cut = "/storage/v1/object/public/projects/", keys = [...imgsOf(x.images), x.video_url || ""].filter(u => u.includes(cut)).map(u => decodeURIComponent(u.split(cut)[1].split("?")[0]));
+    if (keys.length) await sb.storage.from("projects").remove(keys);
+    J = J.filter(y => y.id !== x.id); draw(); toast("Project deleted."); return;
+  }
   if (b.dataset.save) {
     const id = b.dataset.save, title = $("t-" + id).value.trim(), description = $("d-" + id).value.trim();
     if (!title || !description) return toast("Title and description can't be empty.");
@@ -80,6 +142,7 @@ $("root").addEventListener("click", async e => {
 });
 $("root").addEventListener("submit", async e => {
   e.preventDefault();
+  if (e.target.id === "pjf") return saveProject();
   const row = { id: U.id, email: U.email }; F.concat(OPT).forEach(([k]) => row[k] = $(k).value.trim());
   if (F.some(([k]) => !row[k])) return toast("Fill in every field.");
   const f = $("photo").files[0]; row.avatar_url = P?.avatar_url || null;
