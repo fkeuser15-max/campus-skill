@@ -64,6 +64,10 @@ async function sendOtp() {
     if (!/^\+?[0-9 \-]{10,15}$/.test(reg.phone)) return say("Enter a valid phone number.", "err");
   }
   $("send").disabled = true; say("Sending code…");
+  if (mode === "register") {
+    const st = await CS.settings();   // the admin can close registrations
+    if (st.signups_enabled === false) { $("send").disabled = false; return say("Registrations are closed right now. Please try again later.", "err") }
+  }
   if (mode === "register") {   // one account per email (Gmail dots and +tags count as the same address)
     const { data: taken, error: ce } = await sb.rpc("email_registered", { p_email: mail() });
     if (ce) { $("send").disabled = false; return say("Could not check this email. Run 4_ratings_projects.sql in Supabase. (" + ce.message + ")", "err") }
@@ -86,6 +90,7 @@ $("f2").addEventListener("submit", async e => {
   const { data, error } = await sb.auth.verifyOtp({ email: mail(), token, type: "email" });
   $("verify").disabled = false;
   if (error) return say("That code is wrong or expired. Try again or resend.", "err");
+  await Promise.race([CS.track(mode === "register" ? "register" : "login"), new Promise(r => setTimeout(r, 800))]);   // log it before leaving the page
   say("Success! Redirecting…", "ok");
   location.href = next || (mode === "register" ? "profile.html" : "index.html");
 });

@@ -69,10 +69,10 @@ function render() {
 }
 function setFilter(c, t) { cat = c; term = t.toLowerCase().trim(); $("heroCat").value = c; renderCats(); render() }
 /* ===== Events ===== */
-$("cats").addEventListener("click", e => { const b = e.target.closest("[data-c]"); if (!b) return; setFilter(cat === b.dataset.c ? "All" : b.dataset.c, term); $("explore").scrollIntoView() });
-$("fbar").addEventListener("submit", e => { e.preventDefault(); setFilter($("heroCat").value, $("heroQ").value); $("explore").scrollIntoView() });
+$("cats").addEventListener("click", e => { const b = e.target.closest("[data-c]"); if (!b) return; setFilter(cat === b.dataset.c ? "All" : b.dataset.c, term); CS.track("filter", { category: b.dataset.c }); $("explore").scrollIntoView() });
+$("fbar").addEventListener("submit", e => { e.preventDefault(); setFilter($("heroCat").value, $("heroQ").value); CS.track("search", { q: $("heroQ").value.trim().toLowerCase().slice(0, 60), category: $("heroCat").value }); $("explore").scrollIntoView() });
 $("navQ").addEventListener("input", e => { setFilter("All", e.target.value) });
-$("navQ").addEventListener("keydown", e => { if (e.key === "Enter") $("explore").scrollIntoView() });
+$("navQ").addEventListener("keydown", e => { if (e.key === "Enter") { $("explore").scrollIntoView(); CS.track("search", { q: $("navQ").value.trim().toLowerCase().slice(0, 60), category: "All" }) } });
 $("grid").addEventListener("click", e => {
   if (e.target.id === "reset") { e.preventDefault(); $("navQ").value = $("heroQ").value = ""; setFilter("All", ""); return }
   const b = e.target.closest("[data-v]"); if (b) openProfile(+b.dataset.v, !!b.dataset.contact)
@@ -94,6 +94,7 @@ function openProfile(i, contact) {
   $("pfBox").hidden = !p.pf.length;
   $("mPf").innerHTML = p.pf.map((u, k) => `<div style="background:url('${esc(u)}') center/cover" role="img" aria-label="Portfolio item ${k + 1}"></div>`).join("");
   $("rv-skill").innerHTML = p.x.map(s => `<option value="${esc(s.id)}">${esc(s.title)}</option>`).join("");
+  $("rq-skill").innerHTML = $("rv-skill").innerHTML; $("rq-note").value = ""; $("rq-msg").textContent = "";
   setRating(0); $("rv-text").value = ""; $("rv-msg").textContent = ""; loadReviews(p);
   $("cerr").textContent = ""; dlg.showModal(); dlg.scrollTop = 0;
   if (contact) setTimeout(() => { $("cf").scrollIntoView({ block: "center" }); $("cm").focus() }, 60)
@@ -111,6 +112,19 @@ async function loadReviews(p) {
   $("mRev").innerHTML = data.length ? data.map(r => `<div class="rv"><div class="rv-h"><b>${esc(r.reviewer_name || "Student")}</b><span class="stars">${stars(r.rating)}</span><small>${esc(ttl[r.skill_id] || "")} · ${esc(new Date(r.created_at).toLocaleDateString())}</small></div>${r.comment ? `<p>${esc(r.comment)}</p>` : ""}</div>`).join("") : '<p class="sub" style="margin:0">No reviews yet. Be the first to review.</p>';
 }
 function setRating(n) { rating = n; document.querySelectorAll("#rv-stars .star").forEach(b => b.classList.toggle("on", +b.dataset.s <= n)) }
+$("qf").addEventListener("submit", async e => {   // a service request: requester and provider are set by the database, not the browser
+  e.preventDefault();
+  const say = t => $("rq-msg").textContent = t;
+  if (!CS.ok) return say("Supabase isn't connected yet.");
+  const s = await CS.session();
+  if (!s) { toast("Please log in to request a service."); location.href = "login.html?next=index.html"; return }
+  if (s.user.id === cur.id) return say("You can't request your own skill.");
+  $("rq-send").disabled = true; say("Sending…");
+  const { error } = await CS.sb.from("requests").insert({ skill_id: $("rq-skill").value, note: $("rq-note").value.trim() || null });
+  $("rq-send").disabled = false;
+  if (error) return say(error.code === "23505" ? "You already have a pending request for this skill." : /relation|schema cache/i.test(error.message) ? "Run backend/01_schema.sql in Supabase first." : error.message);
+  CS.track("request"); $("rq-note").value = ""; say("Request sent! You'll get a notification when they respond.");
+});
 $("rv-stars").addEventListener("click", e => { const b = e.target.closest("[data-s]"); if (b) setRating(+b.dataset.s) });
 $("rf").addEventListener("submit", async e => {
   e.preventDefault();
@@ -124,6 +138,7 @@ $("rf").addEventListener("submit", async e => {
   const { error } = await CS.sb.from("reviews").upsert({ skill_id: $("rv-skill").value, rating, comment: $("rv-text").value.trim() || null }, { onConflict: "skill_id,reviewer_id" });
   $("rv-send").disabled = false;
   if (error) return say(error.message);
+  CS.track("review", { rating });
   const rt = await CS.sb.from("skill_ratings").select("*").in("skill_id", cur.x.map(x => x.id));   // refresh stars everywhere
   (rt.data || []).forEach(r => RT[r.skill_id] = { avg: Number(r.avg_rating), n: r.review_count });
   cur.top = topOf(cur); render(); fillServices(cur); loadReviews(cur); setRating(0); $("rv-text").value = ""; say("Thanks! Your review is posted.");
@@ -143,7 +158,7 @@ $("cf").addEventListener("submit", async e => {
   let reason = data && data.error;
   if (error && !reason) { try { reason = (await error.context.json()).error } catch (_) { reason = error.message } }
   if (reason) return err(reason);
-  dlg.close(); err(""); e.target.reset();
+  CS.track("contact"); dlg.close(); err(""); e.target.reset();
   toast(data && data.emailed === false ? "Message saved in " + cur.n.split(" ")[0] + "'s inbox, but the email notification could not be sent." : "Message sent to " + cur.n.split(" ")[0] + ".");
 });
 /* ===== Login-aware nav + Offer a Service guard ===== */
@@ -158,5 +173,16 @@ $("offerBtn").addEventListener("click", async () => {
   const pic = p && p.avatar_url ? `<img class="mini" src="${esc(p.avatar_url)}" alt="">` : `<span class="mini" aria-hidden="true">${esc(ini(name))}</span>`;
   $("loginBtn").style.display = "none";
   $("profBtn").innerHTML = `${pic} ${esc(name.split(" ")[0])}`; $("profBtn").style.display = "inline-flex";
+  const nc = await CS.sb.from("notifications").select("id", { count: "exact", head: true }).eq("is_read", false);   // unread bell count
+  if (nc.count) $("profBtn").innerHTML += ` <span class="badge" title="Unread notifications">🔔 ${nc.count}</span>`;
 })();
 renderCats(); loadStudents();
+
+/* ===== Admin switches (set on the admin page): announcement, maintenance, feature on/off ===== */
+CS.settings().then(st => {
+  if (st.announcement) { $("announce").textContent = st.announcement; $("announce").hidden = false }
+  if (st.requests_enabled === false) $("reqBox").hidden = true;
+  if (st.reviews_enabled === false) $("rf").hidden = true;
+  if (st.messages_enabled === false) $("cf").hidden = true;
+  if (st.maintenance_mode === true) document.body.insertAdjacentHTML("afterbegin", `<div class="maint" role="alert"><div><h1>We'll be back soon</h1><p>Campus Skill is down for maintenance.</p><a class="btn btn-o" href="admin.html">Admin sign-in</a></div></div>`);
+});

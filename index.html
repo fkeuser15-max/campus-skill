@@ -13,6 +13,7 @@
 </head>
 
 <body>
+  <div class="announce" id="announce" role="status" hidden></div>
 
   <!-- ===== A. Sticky navigation ===== -->
   <header id="hdr">
@@ -148,6 +149,15 @@
       <div id="pfBox">
         <h3>Portfolio</h3>
         <div class="pf" id="mPf"></div>
+      </div>
+      <div id="reqBox">
+        <h3>Request a service</h3>
+        <form class="cf" id="qf" novalidate>
+          <div><label for="rq-skill">Skill</label><select id="rq-skill"></select></div>
+          <div><label for="rq-note">What do you need? (optional)</label><textarea id="rq-note" maxlength="1000" placeholder="Describe the job, deadline and budget."></textarea></div>
+          <button class="btn btn-a" id="rq-send" type="submit">Send request</button>
+          <p id="rq-msg" role="status" style="font-weight:600;font-size:14px"></p>
+        </form>
       </div>
       <div id="rvBox">
         <h3>Ratings &amp; reviews</h3>

@@ -14,5 +14,12 @@
   // Simple header for inner pages (login, skill, profile)
   const h = $("subhdr");
   if (h) h.innerHTML = `<div class="wrap nav"><a class="logo" href="index.html"><svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="11" fill="#4338CA"/><path d="M20 9 6 16l14 7 14-7z" fill="#fff"/><path d="M12 20v6c0 2 3.6 4 8 4s8-2 8-4v-6l-8 4z" fill="#2DD4BF"/></svg>Campus Skill</a><a class="btn btn-o btn-sm" style="margin-left:auto" href="index.html">← Back to home</a></div>`;
-  window.CS = { sb, ok, $, esc, ini, toast, session, profile, SKILLS };
+    /* --- Analytics + server settings (admin page shows them) --- */
+  // Fire-and-forget event log. Returns a promise that always resolves, so callers may await it before navigating away.
+  const track = (event, meta) => { if (!sb) return Promise.resolve(); try { return Promise.resolve(sb.rpc("log_event", { p_event: event, p_path: location.pathname, p_meta: meta || null })).then(() => {}, () => {}) } catch (e) { return Promise.resolve() } };
+  // Public on/off switches set by the admin (maintenance_mode, announcement, signups_enabled, ...). Missing table => defaults apply.
+  let settingsP; const settings = () => settingsP || (settingsP = !sb ? Promise.resolve({}) : Promise.resolve(sb.from("app_settings").select("key,value")).then(r => Object.fromEntries((r.data || []).map(x => [x.key, x.value])), () => ({})));
+  if (!window.CS_NO_TRACK) track("page_view");
+
+window.CS = { sb, ok, $, esc, ini, toast, session, profile, track, settings, SKILLS };
 })();

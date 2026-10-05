@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Admin – Campus Skill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="stylesheet.css">
+<style>
+  .box { max-width: none !important; margin: 0 0 18px !important }
+  .tabs5 { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px }
+  .tabs5 button { min-height: 44px; padding: 0 18px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); font: 600 15px var(--font); cursor: pointer }
+  .tabs5 button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink) }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 18px }
+  .card2 { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px }
+  .card2 small { color: var(--muted); font-weight: 600 } .card2 b { display: block; font-size: 28px; line-height: 1.2 }
+  .bars { display: flex; align-items: flex-end; gap: 6px; height: 170px; margin-top: 14px }
+  .bar { flex: 1; min-width: 14px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100% }
+  .bar span { width: 100%; background: var(--brand); border-radius: 6px 6px 0 0; min-height: 3px; display: block }
+  .bar small { font-size: 11px; color: var(--muted); margin-top: 4px }
+  .tw { overflow-x: auto; margin-top: 12px } table { width: 100%; border-collapse: collapse; font-size: 14px }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top } th { color: var(--muted); font-size: 12.5px; white-space: nowrap }
+  td small { color: var(--muted) } .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px }
+  .row2 { display: flex; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14.5px }
+  .bad { background: #FEE2E2 !important; color: #991B1B !important }
+  .acts2 { display: flex; gap: 6px; flex-wrap: wrap }
+  .setrow { display: grid; grid-template-columns: 1fr auto; gap: 10px 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line) }
+  .setrow label { margin: 0 } .setrow small { color: var(--muted); display: block; font-weight: 400 }
+  .setrow input[type=checkbox] { width: 26px; height: 26px; min-height: 0 }
+  .setrow .full { grid-column: 1/-1 } code { background: var(--bg); padding: 2px 6px; border-radius: 6px; font-size: 13px }
+</style></head><body>
+<header><div class="wrap nav">
+  <a class="logo" href="index.html">Campus Skill <span class="badge" style="margin-left:6px">Admin</span></a>
+  <div class="chan" id="who" hidden style="margin-left:auto;align-items:center"><small id="whoEmail" style="color:var(--muted)"></small><a class="btn btn-o btn-sm" href="index.html">View site</a><button class="btn btn-o btn-sm" id="out">Log out</button></div>
+</div></header>
+<main class="page"><div class="wrap">
+
+  <!-- Admin sign-in: same email code as the site, then the database checks the admins table -->
+  <section id="gate" hidden><div class="panel">
+    <h1>Admin sign-in</h1><p class="sub">Use the email of an admin account. We send a one-time code.</p>
+    <form id="f1" class="stack" novalidate><div><label for="email">Admin email</label><input id="email" type="email" autocomplete="email"></div><button class="btn btn-p" type="submit">Send code</button></form>
+    <form id="f2" class="stack" hidden novalidate><div><label for="code">Enter the code</label><input id="code" class="otp" inputmode="numeric" maxlength="10" autocomplete="one-time-code"></div><button class="btn btn-p" type="submit">Sign in</button></form>
+    <p class="msg" id="gmsg" role="status"></p>
+  </div></section>
+  <section id="denied" hidden><div class="panel"><h1>Not an admin</h1><p class="sub"><b id="deniedEmail"></b> is signed in but is not in the admins list. Ask an existing admin, or add your email in Supabase (see README).</p><button class="btn btn-o" id="deniedOut">Sign out</button></div></section>
+
+  <section id="app" hidden>
+    <div class="tabs5" role="tablist" id="tabs">
+      <button role="tab" data-t="overview" aria-selected="true">Overview</button><button role="tab" data-t="users" aria-selected="false">Users</button>
+      <button role="tab" data-t="storage" aria-selected="false">Storage</button><button role="tab" data-t="settings" aria-selected="false">Server settings</button>
+      <button role="tab" data-t="logs" aria-selected="false">Logs</button>
+    </div>
+    <div id="view"></div>
+  </section>
+</div></main>
+<div class="toast" id="toast" role="status"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>window.CS_NO_TRACK = true;   // the admin page does not log its own visits</script>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+const { sb, $, esc, toast } = CS, C = window.CS_CONFIG || {};
+const show = id => ["gate", "denied", "app"].forEach(x => $(x).hidden = x !== id);
+const fmtB = n => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(1) + " KB" : (n / 1048576).toFixed(1) + " MB";
+const when = t => t ? new Date(t).toLocaleString() : "—";
+const gsay = (t, c = "") => { $("gmsg").textContent = t; $("gmsg").className = "msg " + c };
+const LOADING = '<p class="sub">Loading…</p>';
+const fail = e => { $("view").innerHTML = `<div class="panel box"><h2>Something went wrong</h2><p class="msg err">${esc(e.message || e)}</p><p class="sub">If this mentions a missing function or table, run backend/04_admin.sql (and 05_admin_storage.sql) in Supabase.</p></div>` };
+let me = null, SESSION = null, USERS = [], UQ = "";
+
+/* ---------- sign-in ---------- */
+async function boot() {
+  if (!CS.ok) { show("gate"); return gsay("Add your Supabase URL and anon key in config.js first.", "err") }
+  SESSION = await CS.session();
+  if (!SESSION) return show("gate");
+  const { data, error } = await sb.rpc("is_admin");
+  if (error) { show("gate"); return gsay(error.message + " (run backend/04_admin.sql)", "err") }
+  if (data !== true) { $("deniedEmail").textContent = SESSION.user.email; return show("denied") }
+  me = SESSION.user; $("who").hidden = false; $("whoEmail").textContent = me.email; show("app"); go("overview");
+}
+$("f1").addEventListener("submit", async e => {
+  e.preventDefault(); const email = $("email").value.trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(email)) return gsay("Enter a valid email address.", "err");
+  gsay("Sending code…");
+  const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });   // admins must already have an account
+  if (error) return gsay(/not allowed|not found/i.test(error.message) ? "No account with this email." : error.message, "err");
+  $("f1").hidden = true; $("f2").hidden = false; gsay("Code sent to " + email + ".", "ok"); $("code").focus();
+});
+$("f2").addEventListener("submit", async e => {
+  e.preventDefault();
+  const { error } = await sb.auth.verifyOtp({ email: $("email").value.trim().toLowerCase(), token: $("code").value.trim(), type: "email" });
+  if (error) return gsay("That code is wrong or expired.", "err");
+  gsay(""); boot();
+});
+const signOut = async () => { await sb.auth.signOut(); location.reload() };
+$("out").addEventListener("click", signOut); $("deniedOut").addEventListener("click", signOut);
+
+/* ---------- tabs ---------- */
+const TABS = { overview, users, storage, settings, logs };
+function go(t) { $("tabs").querySelectorAll("button").forEach(b => b.setAttribute("aria-selected", b.dataset.t === t)); $("view").innerHTML = LOADING; TABS[t]() }
+$("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (b) go(b.dataset.t) });
+const rows = (items, k, v) => items.length ? items.map(x => `<div class="row2"><span>${esc(x[k])}</span><b>${esc(x[v])}</b></div>`).join("") : '<p class="sub" style="margin:8px 0 0">Nothing yet.</p>';
+async function ensureUsers() { if (!USERS.length) { const r = await sb.rpc("admin_list_users"); if (r.error) throw r.error; USERS = r.data } return USERS }
+const nameOf = id => { const u = USERS.find(x => x.id === id); return u ? u.full_name : id ? String(id).slice(0, 8) + "…" : "visitor" };
+
+/* ---------- Overview (analytics) ---------- */
+async function overview(days = 14) {
+  const { data: d, error } = await sb.rpc("admin_analytics", { p_days: days }); if (error) return fail(error);
+  const T = d.totals, max = Math.max(1, ...d.daily.map(x => x.events));
+  $("view").innerHTML = `<div class="sk-h" style="margin-bottom:12px"><h2 style="margin:0">Overview</h2><label style="margin:0">Last <select id="days" style="width:auto;display:inline-block;min-height:40px">${[7, 14, 30, 90].map(n => `<option ${n === days ? "selected" : ""}>${n}</option>`).join("")}</select> days</label></div>
+    <div class="cards">${[["Users", T.users], ["New (7 days)", T.new_users_7d], ["Skills", T.skills], ["Projects", T.projects], ["Reviews", T.reviews], ["Requests", T.requests], ["Messages", T.messages], ["Suspended", T.suspended]].map(([k, v]) => `<div class="card2"><small>${k}</small><b>${v}</b></div>`).join("")}</div>
+    <div class="panel box"><h2>Activity per day</h2>${d.daily.length ? `<div class="bars">${d.daily.map(x => `<div class="bar" title="${esc(x.day)}: ${x.events} events, ${x.users} signed-in users"><span style="height:${Math.round(x.events / max * 100)}%"></span><small>${esc(String(x.day).slice(5))}</small></div>`).join("")}</div>` : '<p class="sub">No events recorded yet. Events appear as people use the site.</p>'}</div>
+    <div class="two"><div class="panel box"><h2>Events by type</h2>${rows(d.by_event, "event", "n")}</div><div class="panel box"><h2>Skills by category</h2>${rows(d.top_categories, "category", "n")}</div><div class="panel box"><h2>Top searches</h2>${rows(d.top_searches, "q", "n")}</div></div>`;
+  $("days").onchange = e => overview(+e.target.value);
+}
+
+/* ---------- Users ---------- */
+async function users() { try { USERS = []; await ensureUsers() } catch (e) { return fail(e) } drawUsers() }
+function drawUsers() {
+  const list = USERS.filter(u => (u.full_name + " " + u.email + " " + (u.college || "")).toLowerCase().includes(UQ.toLowerCase()));
+  const b = (u, act, label) => `<button class="btn btn-o btn-sm" data-do="${act}" data-id="${esc(u.id)}">${label}</button>`;
+  $("view").innerHTML = `<div class="panel box"><div class="sk-h"><h2>Users (${USERS.length})</h2><input id="uq" placeholder="Search name, email, college" style="max-width:300px" value="${esc(UQ)}"></div>
+    <div class="tw"><table><thead><tr><th>Name</th><th>Contact</th><th>Joined</th><th>Last sign-in</th><th>Skills / projects</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+    ${list.map(u => `<tr><td><b>${esc(u.full_name)}</b><br><small>${esc(u.college || "")} ${u.enrollment_no ? "· " + esc(u.enrollment_no) : ""}</small></td>
+      <td>${esc(u.email)}<br><small>${esc(u.phone || "")}</small></td><td>${esc(when(u.created_at))}</td><td>${esc(when(u.last_sign_in_at))}</td><td>${u.skills} / ${u.projects}</td>
+      <td>${u.is_admin ? '<span class="badge">admin</span> ' : ""}${u.suspended ? '<span class="badge bad">suspended</span>' : '<span class="badge g">active</span>'}</td>
+      <td>${u.id === me.id ? "<small>You</small>" : `<div class="acts2">${b(u, u.suspended ? "unsuspend" : "suspend", u.suspended ? "Reactivate" : "Suspend")}${b(u, u.is_admin ? "unadmin" : "admin", u.is_admin ? "Remove admin" : "Make admin")}${b(u, "delete", "Delete")}</div>`}</td></tr>`).join("") || '<tr><td colspan="7">No users match.</td></tr>'}
+    </tbody></table></div></div>`;
+  const q = $("uq"); q.oninput = () => { UQ = q.value; drawUsers(); const n = $("uq"); n.focus(); n.setSelectionRange(UQ.length, UQ.length) };
+}
+async function userAction(act, id) {
+  const u = USERS.find(x => x.id === id); if (!u) return;
+  try {
+    if (act === "suspend" || act === "unsuspend") {
+      if (act === "suspend" && !confirm(`Suspend ${u.full_name}? They stay able to log in but cannot add skills, projects, reviews or requests.`)) return;
+      const { error } = await sb.rpc("admin_set_suspended", { p_user: id, p_value: act === "suspend" }); if (error) throw error;
+    } else if (act === "admin" || act === "unadmin") {
+      if (!confirm(`${act === "admin" ? "Give admin access to" : "Remove admin access from"} ${u.full_name}?`)) return;
+      const { error } = await sb.rpc("admin_set_admin", { p_user: id, p_value: act === "admin" }); if (error) throw error;
+    } else if (act === "delete") {
+      if (!confirm(`Delete ${u.full_name} (${u.email}) permanently? This removes their account, skills, projects, reviews, messages and files. It cannot be undone.`)) return;
+      SESSION = await CS.session();
+      const r = await fetch(C.SUPABASE_URL + "/functions/v1/admin-delete-user", { method: "POST", headers: { "Content-Type": "application/json", apikey: C.SUPABASE_ANON_KEY, Authorization: "Bearer " + SESSION.access_token }, body: JSON.stringify({ user_id: id }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || "Delete failed. Is the admin-delete-user function deployed?");
+    }
+    toast("Done."); USERS = []; await users();
+  } catch (e) { toast(e.message || String(e)) }
+}
+
+/* ---------- Storage ---------- */
+async function storage(bucket) {
+  const { data: sum, error } = await sb.rpc("admin_storage_summary"); if (error) return fail(error);
+  bucket = bucket || (sum[0] && sum[0].bucket);
+  try { await ensureUsers() } catch (e) {}
+  const f = bucket ? await sb.rpc("admin_storage_files", { p_bucket: bucket, p_limit: 200 }) : { data: [] }; if (f.error) return fail(f.error);
+  $("view").innerHTML = `<div class="panel box"><h2>Buckets</h2><div class="tw"><table><thead><tr><th>Bucket</th><th>Access</th><th>Files</th><th>Size</th></tr></thead><tbody>
+    ${sum.map(s => `<tr><td><b>${esc(s.bucket)}</b></td><td>${s.public ? "public" : "private"}</td><td>${s.files}</td><td>${fmtB(s.bytes)}</td></tr>`).join("")}</tbody></table></div></div>
+    <div class="panel box"><div class="sk-h"><h2>Files</h2><label style="margin:0">Bucket <select id="bk" style="width:auto;display:inline-block;min-height:40px">${sum.map(s => `<option ${s.bucket === bucket ? "selected" : ""}>${esc(s.bucket)}</option>`).join("")}</select></label></div>
+    <p class="sub" style="margin:4px 0 0">Newest 200 files. Files are stored in a folder named after the owner.</p>
+    <div class="tw"><table><thead><tr><th>File</th><th>Owner</th><th>Size</th><th>Type</th><th>Uploaded</th><th></th></tr></thead><tbody>
+    ${f.data.map(o => { const url = sb.storage.from(bucket).getPublicUrl(o.name).data.publicUrl;
+      return `<tr><td>${esc(o.name.split("/").slice(1).join("/") || o.name)}</td><td>${esc(nameOf(o.owner))}</td><td>${fmtB(o.bytes || 0)}</td><td>${esc(o.mime || "")}</td><td>${esc(when(o.created_at))}</td>
+      <td><div class="acts2"><a class="btn btn-o btn-sm" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open</a><button class="btn btn-o btn-sm" data-file="${esc(o.name)}" data-bucket="${esc(bucket)}">Delete</button></div></td></tr>` }).join("") || '<tr><td colspan="6">No files in this bucket.</td></tr>'}
+    </tbody></table></div></div>`;
+  if ($("bk")) $("bk").onchange = e => storage(e.target.value);
+}
+async function delFile(bucket, name) {
+  if (!confirm("Delete this file permanently?\n" + name)) return;
+  const { data, error } = await sb.storage.from(bucket).remove([name]);
+  if (error) return toast(error.message);
+  if (!data || !data.length) return toast("Not deleted. Run backend/05_admin_storage.sql in Supabase.");
+  toast("File deleted."); storage(bucket);
+}
+
+/* ---------- Server settings ---------- */
+const LABELS = { maintenance_mode: ["Maintenance mode", "Visitors see a 'back soon' screen on the home page."], announcement: ["Announcement banner", "Shown at the top of the home page. Leave empty to hide."],
+  signups_enabled: ["Allow new registrations", "Off = nobody new can sign up (blocked in the database)."], requests_enabled: ["Allow service requests", "Off = the Request button stops working."],
+  reviews_enabled: ["Allow ratings and reviews", "Off = nobody can post or edit reviews."], messages_enabled: ["Allow messages", "Off = Contact Student stops sending."], max_projects_per_user: ["Max sample projects per student", "Students cannot add more than this many."] };
+async function settings() {
+  const [s, i] = await Promise.all([sb.from("app_settings").select("*").order("key"), sb.rpc("admin_server_info")]);
+  if (s.error) return fail(s.error); if (i.error) return fail(i.error);
+  const ref = (C.SUPABASE_URL || "").replace("https://", "").split(".")[0], info = i.data;
+  $("view").innerHTML = `<div class="panel box"><h2>Application settings</h2>${s.data.map(r => { const [l, h] = LABELS[r.key] || [r.key, ""], t = typeof r.value;
+    return `<div class="setrow"><div><label for="s-${esc(r.key)}">${esc(l)}</label><small>${esc(h)}</small></div>
+      ${t === "boolean" ? `<input type="checkbox" id="s-${esc(r.key)}" ${r.value ? "checked" : ""}>` : t === "number" ? `<input type="number" min="0" id="s-${esc(r.key)}" value="${esc(r.value)}" style="width:110px">` : `<span></span><textarea class="full" id="s-${esc(r.key)}" maxlength="300">${esc(r.value)}</textarea>`}
+      <div class="full"><button class="btn btn-p btn-sm" data-set="${esc(r.key)}" data-type="${t}">Save</button> <small>Last changed ${esc(when(r.updated_at))}</small></div></div>` }).join("")}</div>
+    <div class="two"><div class="panel box"><h2>Server</h2>
+      <div class="row2"><span>Project</span><b><code>${esc(ref)}</code></b></div><div class="row2"><span>API URL</span><b style="word-break:break-all">${esc(C.SUPABASE_URL)}</b></div>
+      <div class="row2"><span>Database size</span><b>${esc(info.database_size)}</b></div><div class="row2"><span>Server time</span><b>${esc(when(info.server_time))}</b></div>
+      <p class="sub" style="margin:10px 0 0;font-size:13px">${esc(info.postgres)}</p></div>
+    <div class="panel box"><h2>Rows per table</h2>${rows(Object.entries(info.rows).map(([k, v]) => ({ k, v })), "k", "v")}</div>
+    <div class="panel box"><h2>Edge functions</h2><p class="sub" style="margin:0 0 10px">Checks that each function is deployed and reachable.</p><div id="fn"></div><button class="btn btn-o btn-sm" id="fncheck" style="margin-top:10px">Check now</button>
+      <p class="sub" style="margin:12px 0 0;font-size:13px">Email secrets (SMTP_USER, SMTP_PASS) are set in Supabase → Edge Functions → Secrets. They cannot be shown or changed here.</p></div></div>`;
+  $("fncheck").onclick = async () => { $("fn").innerHTML = "Checking…"; const out = [];
+    for (const n of ["send-message", "admin-delete-user"]) { let st; try { const r = await fetch(C.SUPABASE_URL + "/functions/v1/" + n, { method: "OPTIONS" }); st = r.ok ? "deployed ✓" : "not found (" + r.status + ")" } catch (e) { st = "unreachable" } out.push({ n, st }) }
+    $("fn").innerHTML = rows(out, "n", "st") };
+}
+async function saveSetting(key, type) {
+  const el = $("s-" + key); const value = type === "boolean" ? el.checked : type === "number" ? Number(el.value) : el.value.trim();
+  if (type === "number" && (!Number.isFinite(value) || value < 0)) return toast("Enter a number of 0 or more.");
+  const { error } = await sb.rpc("admin_update_setting", { p_key: key, p_value: value });
+  toast(error ? error.message : "Saved.");
+}
+
+/* ---------- Logs ---------- */
+const LOGS = { kind: "events", evt: "" };
+async function logs() {
+  try { await ensureUsers() } catch (e) {}
+  const ev = LOGS.kind === "events";
+  let q = sb.from(ev ? "analytics_events" : "admin_audit").select("*").order("created_at", { ascending: false }).limit(200);
+  if (ev && LOGS.evt) q = q.eq("event", LOGS.evt);
+  const { data, error } = await q; if (error) return fail(error);
+  const names = ["page_view", "login", "register", "search", "filter", "contact", "request", "review", "project_add", "skill_add"];
+  const meta = m => m ? esc(JSON.stringify(m).slice(0, 90)) : "";
+  $("view").innerHTML = `<div class="panel box"><div class="sk-h"><div class="tabs5" style="margin:0"><button data-k="events" aria-selected="${ev}">Analytics events</button><button data-k="audit" aria-selected="${!ev}">Admin audit log</button></div>
+    <div class="chan">${ev ? `<select id="evsel" style="width:auto;min-height:40px"><option value="">All events</option>${names.map(n => `<option ${LOGS.evt === n ? "selected" : ""}>${n}</option>`).join("")}</select>` : ""}<button class="btn btn-o btn-sm" id="csv">Download CSV</button></div></div>
+    <p class="sub" style="margin:6px 0 0">Newest 200 entries.</p><div class="tw"><table><thead><tr>${ev ? "<th>Time</th><th>Event</th><th>Who</th><th>Page</th><th>Details</th>" : "<th>Time</th><th>Admin</th><th>Action</th><th>Target</th><th>Details</th>"}</tr></thead><tbody>
+    ${data.map(r => ev ? `<tr><td>${esc(when(r.created_at))}</td><td><span class="badge">${esc(r.event)}</span></td><td>${esc(nameOf(r.user_id))}</td><td>${esc(r.path || "")}</td><td><small>${meta(r.meta)}</small></td></tr>`
+      : `<tr><td>${esc(when(r.created_at))}</td><td>${esc(r.admin_email || "")}</td><td><span class="badge">${esc(r.action)}</span></td><td>${esc(r.target ? (USERS.find(u => u.id === r.target) || {}).full_name || r.target : "")}</td><td><small>${meta(r.detail)}</small></td></tr>`).join("") || '<tr><td colspan="5">Nothing logged yet.</td></tr>'}</tbody></table></div></div>`;
+  $("view").querySelectorAll("[data-k]").forEach(b => b.onclick = () => { LOGS.kind = b.dataset.k; logs() });
+  if ($("evsel")) $("evsel").onchange = e => { LOGS.evt = e.target.value; logs() };
+  $("csv").onclick = () => {   // spreadsheet export of what is on screen
+    const cols = ev ? ["created_at", "event", "user_id", "path", "meta"] : ["created_at", "admin_email", "action", "target", "detail"];
+    const cell = v => '"' + String(v && typeof v === "object" ? JSON.stringify(v) : v ?? "").replace(/"/g, '""') + '"';
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([cols.join(",") + "\n" + data.map(r => cols.map(c => cell(r[c])).join(",")).join("\n")], { type: "text/csv" }));
+    a.download = (ev ? "events" : "audit") + ".csv"; a.click();
+  };
+}
+
+/* ---------- one click handler for every action button ---------- */
+$("view").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.do) userAction(b.dataset.do, b.dataset.id);
+  else if (b.dataset.file) delFile(b.dataset.bucket, b.dataset.file);
+  else if (b.dataset.set) saveSetting(b.dataset.set, b.dataset.type);
+});
+boot();
+</script></body></html>

@@ -43,6 +43,7 @@ $("sf").addEventListener("submit", async e => {
   $("reg").disabled = true; say("Saving…");
   const { error } = await sb.from("skills").insert({ user_id: U.id, category: v === NL ? "Other" : v, title: v === NL ? custom : v, description });
   if (error) { $("reg").disabled = false; return say(error.message, "err") }
+  CS.track("skill_add", { category: v === NL ? "Other" : v });
   say("Skill registered! Taking you to your profile…", "ok"); setTimeout(() => location.href = "profile.html", 900);
 });
 </script></body></html>

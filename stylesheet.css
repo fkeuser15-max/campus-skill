@@ -999,3 +999,8 @@
     #rv-stars { display: flex; gap: 2px }
     .star { background: none; border: 0; font-size: 32px; line-height: 1; color: var(--line); cursor: pointer; min-width: 44px; min-height: 44px; padding: 0 }
     .star.on { color: #F59E0B }
+
+    /* ===== Announcement banner + maintenance screen (admin settings) ===== */
+    .announce { background: var(--brand); color: var(--on-brand); text-align: center; padding: 10px 16px; font-weight: 600; font-size: 15px }
+    .maint { position: fixed; inset: 0; z-index: 200; background: var(--bg); display: grid; place-items: center; text-align: center; padding: 24px }
+    .maint h1 { font-size: 34px; margin-bottom: 8px } .maint p { color: var(--muted); margin-bottom: 18px }

@@ -11,7 +11,7 @@
 <script src="config.js"></script><script src="app.js"></script>
 <script>
 const { sb, $, esc, ini, toast } = CS;
-let U, P, S = [], M = [], J = [], R = {}, pj = null, edit = false;
+let U, P, S = [], M = [], J = [], R = {}, N = [], Q = [], pj = null, edit = false, isAdm = false;
 const imgsOf = s => (s || "").split(",").map(u => u.trim()).filter(Boolean);
 const pfList = () => ((P && P.portfolio) || "").split(",").map(u => u.trim()).filter(Boolean);
 const OPT = [["department", "Department"], ["headline", "Headline (shown on your card)"], ["bio", "Short bio"]];
@@ -21,6 +21,7 @@ const F = [["full_name", "Full name"], ["phone", "Phone"], ["enrollment_no", "En
   const s = await CS.session();
   if (!s) { location.href = "login.html?next=profile.html"; return }
   U = s.user; await load();
+  if (location.hash) { const t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView() }
 })();
 async function load() {
   P = await CS.profile(U.id);
@@ -28,6 +29,9 @@ async function load() {
   S = r.data || [];
   R = {}; if (S.length) { const rr = await sb.from("skill_ratings").select("*").in("skill_id", S.map(x => x.id)); (rr.data || []).forEach(x => R[x.skill_id] = x) }
   const pr = await sb.from("projects").select("*").eq("user_id", U.id).order("created_at", { ascending: false }); J = pr.data || [];
+  const ia = await sb.rpc("is_admin"); isAdm = ia.data === true;   // shows the Admin button
+  const nn = await sb.from("notifications").select("*").eq("user_id", U.id).order("created_at", { ascending: false }).limit(30); N = nn.data || [];
+  const qq = await sb.from("requests").select("*").or(`requester_id.eq.${U.id},provider_id.eq.${U.id}`).order("created_at", { ascending: false }).limit(50); Q = qq.data || [];
   const m = await sb.from("messages").select("*").eq("to_user", U.id).order("created_at", { ascending: false }).limit(50);
   M = m.data || []; if (!P) edit = true; draw();
   const unread = M.filter(x => !x.is_read).map(x => x.id);   // mark as read after showing the "new" highlight
@@ -77,8 +81,29 @@ async function saveProject() {
     const row = { title, description: description || null, github_url: gh || null, video_url: video, images: imgs.join(",") || null };
     const { error } = pj.id ? await sb.from("projects").update(row).eq("id", pj.id) : await sb.from("projects").insert({ ...row, user_id: U.id });
     if (error) throw new Error(/relation|schema cache/i.test(error.message) ? "Run 4_ratings_projects.sql in Supabase first. (" + error.message + ")" : error.message);
-    pj = null; toast("Project saved."); await load();
+    CS.track("project_add"); pj = null; toast("Project saved."); await load();
   } catch (err) { if ($("pj-save")) $("pj-save").disabled = false; toast(err.message) }
+}
+function notifPanel() {
+  const n = N.filter(x => !x.is_read).length;
+  return `<div class="panel pw" id="notifications"><div class="sk-h"><h2>Notifications ${n ? `<span class="badge">${n} new</span>` : ""}</h2>
+    <div class="chan">${N.length ? `<button class="btn btn-o btn-sm" data-a="nread">Mark all read</button><button class="btn btn-o btn-sm" data-a="nclear">Clear</button>` : ""}</div></div>
+    ${N.length ? N.map(x => `<div class="sk" style="${x.is_read ? "" : "border-color:var(--brand)"}"><div class="sk-h"><b>${esc(x.title)}</b><small style="color:var(--muted)">${esc(new Date(x.created_at).toLocaleString())}</small></div>${x.body ? `<p>${esc(x.body)}</p>` : ""}</div>`).join("")
+      : `<p class="sub" style="margin:14px 0 0">No notifications yet.</p>`}</div>`;
+}
+const badgeFor = s => `<span class="badge${s === "accepted" || s === "completed" ? " g" : ""}">${esc(s)}</span>`;
+function reqPanel() {
+  const got = Q.filter(x => x.provider_id === U.id), sent = Q.filter(x => x.requester_id === U.id);
+  const b = (id, st, label, cls) => `<button class="btn ${cls} btn-sm" data-rq="${id}" data-st="${st}">${label}</button>`;
+  const row = (x, mine) => `<div class="sk"><div class="sk-h"><b>${esc(x.skill_title || "Skill")}</b>${badgeFor(x.status)}</div>
+    <p>${mine ? "You asked for this skill" : "From " + esc(x.requester_name || "a student")}${x.note ? ": " + esc(x.note) : ""}</p>
+    <div class="chan">${mine ? (["pending", "accepted"].includes(x.status) ? b(x.id, "cancelled", "Cancel request", "btn-o") : "")
+      : x.status === "pending" ? b(x.id, "accepted", "Accept", "btn-p") + b(x.id, "declined", "Decline", "btn-o")
+      : x.status === "accepted" ? b(x.id, "completed", "Mark completed", "btn-p") : ""}</div></div>`;
+  const none = t => `<p class="sub" style="margin:10px 0 0">${t}</p>`;
+  return `<div class="panel pw" id="requests"><h2>Service requests</h2>
+    <h3 style="font-size:16px;margin:14px 0 0">Received</h3>${got.length ? got.map(x => row(x, false)).join("") : none("No one has requested your skills yet.")}
+    <h3 style="font-size:16px;margin:18px 0 0">Sent</h3>${sent.length ? sent.map(x => row(x, true)).join("") : none("You haven't requested a service yet. Open a student on the home page to request one.")}</div>`;
 }
 function draw() {
   const p = P || { email: U.email };
@@ -100,11 +125,12 @@ function draw() {
     : `<p class="sub" style="margin:14px 0 0">No skills listed yet. Add your first one.</p>`;
   $("root").innerHTML = `<div class="panel pw"><div class="pr-head">${av}
     <div style="flex:1;min-width:200px"><h1>${esc(p.full_name || "Complete your profile")}</h1><p class="sub" style="margin:0 0 8px">${esc(p.college || "")}</p><span class="badge g">✓ Verified student</span></div>
-    <div class="chan"><button class="btn btn-o btn-sm" data-a="edit">${edit ? "Done editing" : "✎ Edit details & skills"}</button><button class="btn btn-o btn-sm" data-a="out">Log out</button></div></div>
+    <div class="chan">${isAdm ? `<a class="btn btn-a btn-sm" href="admin.html">Admin dashboard</a>` : ""}<button class="btn btn-o btn-sm" data-a="edit">${edit ? "Done editing" : "✎ Edit details & skills"}</button><button class="btn btn-o btn-sm" data-a="out">Log out</button></div></div>
     ${edit ? form : view + pfView}</div>
+    ${notifPanel()}${reqPanel()}
     <div class="panel pw"><div class="sk-h"><h2>My skills</h2><a class="btn btn-a btn-sm" href="skill.html">+ Add skill</a></div>${skills}</div>
     ${projPanel()}
-    <div class="panel pw"><div class="sk-h"><h2>Messages ${unread ? `<span class="badge">${unread} new</span>` : ""}</h2></div>${msgs}</div>`;
+    <div class="panel pw" id="messages"><div class="sk-h"><h2>Messages ${unread ? `<span class="badge">${unread} new</span>` : ""}</h2></div>${msgs}</div>`;
 }
 $("root").addEventListener("click", async e => {
   const b = e.target.closest("button"); if (!b) return;
@@ -118,6 +144,9 @@ $("root").addEventListener("click", async e => {
     if (key) await sb.storage.from("portfolio").remove([decodeURIComponent(key)]);
     P.portfolio = list.join(","); draw(); return;
   }
+  if (b.dataset.a === "nread") { const { error } = await sb.from("notifications").update({ is_read: true }).eq("user_id", U.id).eq("is_read", false); if (error) return toast(error.message); N.forEach(x => x.is_read = true); draw(); return }
+  if (b.dataset.a === "nclear") { const { error } = await sb.from("notifications").delete().eq("user_id", U.id); if (error) return toast(error.message); N = []; draw(); return }
+  if (b.dataset.rq) { const { error } = await sb.from("requests").update({ status: b.dataset.st }).eq("id", b.dataset.rq); if (error) return toast(error.message); toast("Request " + b.dataset.st + "."); await load(); return }
   if (b.dataset.a === "pjnew") { pj = { images: [] }; draw(); return }
   if (b.dataset.a === "pjcancel") { pj = null; draw(); return }
   if (b.dataset.pjedit) { const x = J.find(y => y.id === b.dataset.pjedit); pj = { ...x, images: imgsOf(x.images) }; draw(); return }
