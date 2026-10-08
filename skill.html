@@ -1,49 +1,74 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Offer a service – Campus Skill</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="stylesheet.css"></head><body>
-<header id="subhdr"></header>
-<main class="page"><div class="wrap"><div class="panel">
-  <h1>Offer a service</h1>
-  <p class="sub">Tell other students what you can do. You can edit this later from your profile.</p>
-  <form id="sf" class="stack" novalidate>
-    <div><label for="skill">Skill</label><select id="skill"></select></div>
-    <div id="customBox" hidden><label for="custom">Your skill name</label><input id="custom" maxlength="60" placeholder="e.g. Podcast editing"></div>
-    <div><label for="desc">Description</label><textarea id="desc" maxlength="600" placeholder="What you offer, your experience, tools, and rough pricing."></textarea></div>
-    <button class="btn btn-p" id="reg" type="submit">Register skill</button>
-  </form>
-  <p class="msg" id="msg" role="status"></p>
-</div></div></main>
-<div class="toast" id="toast" role="status"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js"></script><script src="app.js"></script>
-<script>
-const { sb, $, esc } = CS;
-const say = (t, c = "") => { $("msg").textContent = t; $("msg").className = "msg " + c };
-const NL = "__other";
-$("skill").innerHTML = `<option value="">Choose a skill…</option>` + CS.SKILLS.map(s => `<option>${esc(s)}</option>`).join("") + `<option value="${NL}">Not listed skill</option>`;
-$("skill").addEventListener("change", () => { $("customBox").hidden = $("skill").value !== NL; if ($("skill").value === NL) $("custom").focus() });
-let U;
-(async () => {   // Guard: only logged-in students can register a skill
-  if (!CS.ok) return say("Add your Supabase URL and anon key in config.js first.", "err");
-  const s = await CS.session();
-  if (!s) { location.href = "login.html?next=skill.html"; return }
-  U = s.user;
-  if (!(await CS.profile(U.id))) location.href = "profile.html";   // finish profile first
-})();
-$("sf").addEventListener("submit", async e => {
-  e.preventDefault();
-  const v = $("skill").value, custom = $("custom").value.trim(), description = $("desc").value.trim();
-  if (!v) return say("Choose a skill from the list.", "err");
-  if (v === NL && !custom) return say("Type the name of your skill.", "err");
-  if (description.length < 10) return say("Add a short description (at least 10 characters).", "err");
-  if (!U) return say("Still checking your login. Try again in a moment.", "err");
-  $("reg").disabled = true; say("Saving…");
-  const { error } = await sb.from("skills").insert({ user_id: U.id, category: v === NL ? "Other" : v, title: v === NL ? custom : v, description });
-  if (error) { $("reg").disabled = false; return say(error.message, "err") }
-  CS.track("skill_add", { category: v === NL ? "Other" : v });
-  say("Skill registered! Taking you to your profile…", "ok"); setTimeout(() => location.href = "profile.html", 900);
-});
-</script></body></html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Offer a service – Campus Skill</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="favicon-192.png" type="image/png" sizes="192x192">
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#4338CA">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="stylesheet.css?v=6">
+</head>
+
+<body>
+  <header id="subhdr"></header>
+  <main class="page">
+    <div class="wrap">
+      <div class="panel">
+        <h1>Offer a service</h1>
+        <p class="sub">Tell other students what you can do. You can edit or remove it later from Menu → Skills.</p>
+        <form id="sf" class="stack" novalidate>
+          <div><label for="skill">Skill</label><select id="skill"></select></div>
+          <div id="customBox" hidden><label for="custom">Your skill name</label><input id="custom" maxlength="60"
+              placeholder="e.g. Podcast editing"></div>
+          <div><label for="desc">Description</label><textarea id="desc" maxlength="600"
+              placeholder="What you offer, your experience, tools, and rough pricing."></textarea></div>
+          <button class="btn btn-p" id="reg" type="submit">Register skill</button>
+        </form>
+        <p class="msg" id="msg" role="status"></p>
+      </div>
+    </div>
+  </main>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="config.js?v=6"></script>
+  <script src="app.js?v=6"></script>
+  <script>
+    const { sb, $, esc } = CS;
+    const say = (t, c = "") => { $("msg").textContent = t; $("msg").className = "msg " + c };
+    const NL = "__other";
+    $("skill").innerHTML = `<option value="">Choose a skill…</option>` + CS.SKILLS.map(s => `<option>${esc(s)}</option>`).join("") + `<option value="${NL}">Not listed skill</option>`;
+    $("skill").addEventListener("change", () => { $("customBox").hidden = $("skill").value !== NL; if ($("skill").value === NL) $("custom").focus() });
+    let U;
+    (async () => {   // Guard: only logged-in students can register a skill
+      if (!CS.ok) return say("Add your Supabase URL and anon key in config.js first.", "err");
+      const s = await CS.session();
+      if (!s) { location.href = "login.html?next=skill.html"; return }
+      U = s.user;
+      if (!(await CS.profile(U.id))) location.href = "profile.html";   // finish profile first
+    })();
+    $("sf").addEventListener("submit", async e => {
+      e.preventDefault();
+      const v = $("skill").value, custom = $("custom").value.trim(), description = $("desc").value.trim();
+      if (!v) return say("Choose a skill from the list.", "err");
+      if (v === NL && !custom) return say("Type the name of your skill.", "err");
+      if (description.length < 10) return say("Add a short description (at least 10 characters).", "err");
+      if (!U) return say("Still checking your login. Try again in a moment.", "err");
+      $("reg").disabled = true; say("Saving…");
+      const { error } = await sb.from("skills").insert({ user_id: U.id, category: v === NL ? "Other" : v, title: v === NL ? custom : v, description });
+      if (error) { $("reg").disabled = false; return say(error.message, "err") }
+      CS.track("skill_add", { category: v === NL ? "Other" : v });
+      say("Skill registered! Taking you to your profile…", "ok"); setTimeout(() => location.href = "profile.html#skills", 900);
+    });
+  </script>
+</body>
+
+</html>

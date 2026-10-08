@@ -297,7 +297,7 @@
     .acts {
       display: flex;
       gap: 8px;
-      margin-left: 8px
+      margin-left: auto
     }
 
     .menu {
@@ -1004,3 +1004,104 @@
     .announce { background: var(--brand); color: var(--on-brand); text-align: center; padding: 10px 16px; font-weight: 600; font-size: 15px }
     .maint { position: fixed; inset: 0; z-index: 200; background: var(--bg); display: grid; place-items: center; text-align: center; padding: 24px }
     .maint h1 { font-size: 34px; margin-bottom: 8px } .maint p { color: var(--muted); margin-bottom: 18px }
+
+/* ===== Hamburger drawer (Profile / Projects / Skills / Messages) ===== */
+.hamb { position: relative; flex: none; width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; display: grid; place-items: center }
+.hamb:hover { background: var(--brand-soft) }
+.hamb .dot { position: absolute; top: 6px; right: 6px; width: 11px; height: 11px; border-radius: 50%; background: #EF4444; border: 2px solid var(--surface) }
+.hamb .dot[hidden] { display: none }
+header.has-drawer .menu { display: none !important }
+header.has-drawer .nav > .hamb { order: -1; margin-right: 2px }
+.hamb { -webkit-tap-highlight-color: transparent }
+.dr-ov { position: fixed; inset: 0; background: rgba(15, 23, 42, .5); z-index: 90; opacity: 0; pointer-events: none; transition: opacity .2s }
+.dr-ov.on { opacity: 1; pointer-events: auto }
+.drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(320px, 86vw); background: var(--surface); color: var(--ink); z-index: 95; display: flex; flex-direction: column; overflow-y: auto; padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); box-shadow: 8px 0 32px rgba(15, 23, 42, .25); transform: translateX(-104%); visibility: hidden; transition: transform .25s ease, visibility 0s .25s }
+.drawer.on { transform: none; visibility: visible; transition: transform .25s ease }
+.dr-top { display: flex; align-items: center; gap: 12px; padding: 18px 16px; border-bottom: 1px solid var(--line) }
+.dr-who { flex: 1; min-width: 0; display: grid }
+.dr-who b, .dr-who small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.dr-who small { color: var(--muted) }
+.dr-x { flex: none; width: 40px; height: 40px; border-radius: 10px; border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer }
+.dr-x:hover { background: var(--bg) }
+.dr-nav { display: grid; gap: 4px; padding: 12px }
+.dr-i { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 52px; padding: 0 14px; border: 0; border-radius: 12px; background: none; color: var(--ink); font: 700 16px var(--font); text-align: left; text-decoration: none; cursor: pointer }
+.dr-i i { font-style: normal; font-size: 20px; width: 26px; text-align: center }
+.dr-i span { flex: 1 }
+.dr-i:hover { background: var(--bg) }
+.dr-i[aria-current] { background: var(--brand-soft); color: var(--brand) }
+.dr-badge { font-style: normal; background: #EF4444; color: #fff; border-radius: 99px; min-width: 24px; height: 24px; display: grid; place-items: center; font-size: 12px; font-weight: 800; padding: 0 7px }
+.dr-badge[hidden] { display: none }
+.dr-sep { height: 1px; background: var(--line); margin: 4px 16px }
+body.dr-lock { overflow: hidden }
+.cav { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: var(--brand); color: #fff; display: grid; place-items: center; font-weight: 800; flex: none }
+
+/* ===== Dashboard sections + WhatsApp-style chat ===== */
+.panel.wide { max-width: 1000px; padding: 0; overflow: hidden }
+.chat { display: grid; grid-template-columns: 340px 1fr; height: min(680px, calc(100dvh - 150px)); min-height: 460px }
+.cl { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; min-width: 0 }
+.cl-h { padding: 16px 16px 10px }
+.cl-h h2 { margin-bottom: 10px }
+.cl-h input { border-radius: 99px; min-height: 42px }
+.cl-list { overflow-y: auto; flex: 1 }
+.ci { display: flex; gap: 12px; align-items: center; width: 100%; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; cursor: pointer; font: inherit; color: inherit }
+.ci:hover, .ci.on { background: var(--brand-soft) }
+.ci-m { flex: 1; min-width: 0; display: grid; gap: 2px }
+.ci-t, .ci-p { display: flex; justify-content: space-between; align-items: center; gap: 8px }
+.ci-t b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.ci-t small { color: var(--muted); flex: none; font-size: 12px }
+.ci-p { color: var(--muted); font-size: 14px }
+.ci-p span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.ci.un .ci-t small { color: var(--accent); font-weight: 700 }
+.ci.un .ci-p span { color: var(--ink); font-weight: 600 }
+.ub { background: var(--accent); color: #fff; border-radius: 99px; min-width: 22px; height: 22px; display: grid; place-items: center; font-size: 12px; font-weight: 800; padding: 0 6px; flex: none }
+.ct { display: flex; flex-direction: column; min-height: 0; min-width: 0; padding: 0; background: var(--bg) }
+.ct-h { display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line) }
+.ct-h b { display: block }
+.ct-h small { color: var(--muted) }
+.ct-back { display: none; width: 40px; height: 40px; border-radius: 10px; border: 0; background: none; color: var(--ink); font-size: 22px; cursor: pointer; place-items: center }
+.ct-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 4px }
+.ct-empty { flex: 1; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 24px }
+.day { align-self: center; background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 99px; margin: 10px 0; box-shadow: 0 1px 1px rgba(0, 0, 0, .06) }
+.bub { align-self: flex-start; max-width: min(78%, 520px); padding: 8px 12px 6px; border-radius: 14px 14px 14px 4px; background: var(--surface); box-shadow: 0 1px 1px rgba(0, 0, 0, .08); white-space: pre-wrap; word-break: break-word; font-size: 15px }
+.bub.me { align-self: flex-end; border-radius: 14px 14px 4px 14px; background: color-mix(in srgb, var(--accent) 22%, var(--surface)) }
+.bub small { display: block; text-align: right; color: var(--muted); font-size: 11px; margin-top: 2px }
+.bub small .rd { color: #0EA5E9; font-weight: 800 }
+.cmp { display: flex; gap: 8px; padding: 10px 12px; background: var(--surface); border-top: 1px solid var(--line); align-items: flex-end }
+.cmp textarea { flex: 1; min-height: 44px; max-height: 120px; border-radius: 22px; resize: none; padding: 11px 16px }
+.cmp .send { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--accent); color: #fff; font-size: 18px; cursor: pointer; flex: none }
+.cmp .send:disabled { opacity: .5; cursor: default }
+.cmp-off { padding: 14px; text-align: center; color: var(--muted); background: var(--surface); border-top: 1px solid var(--line) }
+@media (max-width: 720px) {
+  .chat { grid-template-columns: 1fr; height: calc(100dvh - 130px) }
+  .chat .ct { display: none }
+  .chat.open .ct { display: flex }
+  .chat.open .cl { display: none }
+  .ct-back { display: grid }
+  .bub { max-width: 86% }
+}
+#subhdr .nav { gap: 12px }
+#subhdr .nav .btn { white-space: nowrap }
+@media (max-width: 480px) { #subhdr .logo { font-size: 17px } #subhdr .nav .btn { padding: 0 12px; font-size: 13px } }
+
+/* ===== Phone input with a fixed +91 prefix ===== */
+.pin { display: flex; align-items: stretch }
+.pin span { display: grid; place-items: center; padding: 0 14px; border: 1.5px solid var(--line); border-right: 0; border-radius: 12px 0 0 12px; background: var(--bg); font-weight: 700; color: var(--muted) }
+.pin input { flex: 1; min-width: 0; border-top-left-radius: 0; border-bottom-left-radius: 0 }
+
+/* ===== Header: menu button left, Campus Skill centred, account button right ===== */
+header .nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px }
+header .nav > .hamb { grid-column: 1; grid-row: 1; justify-self: start; margin: 0 }
+header .nav > .logo { grid-column: 2; grid-row: 1; justify-self: center }
+header .nav > :not(.hamb):not(.logo) { grid-column: 3; grid-row: 1; justify-self: end; margin-left: 0 !important }
+@media (max-width: 720px) { #whoEmail { display: none } }
+@media (max-width: 560px) { header .nav .logo .badge { display: none } #who a.btn { display: none } }
+
+/* ===== "View N sample projects" link-button on student cards ===== */
+.linkbtn { background: none; border: 0; padding: 0; margin: 0; font: inherit; font-weight: 700; color: var(--brand-d); text-decoration: underline; cursor: pointer }
+.linkbtn:hover { color: var(--brand) }
+.ct-h .btn { flex: none }
+
+/* ===== Picked-file chip with a remove button ===== */
+.filechip { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface) }
+.filechip span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px }
+#pj-prev:not(:empty) { margin-bottom: 8px }

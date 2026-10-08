@@ -1,197 +1,374 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>My profile – Campus Skill</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="stylesheet.css"></head><body>
-<header id="subhdr"></header>
-<main class="page"><div class="wrap" id="root"><p class="msg" id="msg" role="status"></p></div></main>
-<div class="toast" id="toast" role="status"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js"></script><script src="app.js"></script>
-<script>
-const { sb, $, esc, ini, toast } = CS;
-let U, P, S = [], M = [], J = [], R = {}, N = [], Q = [], pj = null, edit = false, isAdm = false;
-const imgsOf = s => (s || "").split(",").map(u => u.trim()).filter(Boolean);
-const pfList = () => ((P && P.portfolio) || "").split(",").map(u => u.trim()).filter(Boolean);
-const OPT = [["department", "Department"], ["headline", "Headline (shown on your card)"], ["bio", "Short bio"]];
-const F = [["full_name", "Full name"], ["phone", "Phone"], ["enrollment_no", "Enrollment no."], ["college", "College"], ["address", "Address"]];
-(async () => {
-  if (!CS.ok) { $("msg").className = "msg err"; $("msg").textContent = "Add your Supabase URL and anon key in config.js first."; return }
-  const s = await CS.session();
-  if (!s) { location.href = "login.html?next=profile.html"; return }
-  U = s.user; await load();
-  if (location.hash) { const t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView() }
-})();
-async function load() {
-  P = await CS.profile(U.id);
-  const r = await sb.from("skills").select("*").eq("user_id", U.id).order("created_at", { ascending: false });
-  S = r.data || [];
-  R = {}; if (S.length) { const rr = await sb.from("skill_ratings").select("*").in("skill_id", S.map(x => x.id)); (rr.data || []).forEach(x => R[x.skill_id] = x) }
-  const pr = await sb.from("projects").select("*").eq("user_id", U.id).order("created_at", { ascending: false }); J = pr.data || [];
-  const ia = await sb.rpc("is_admin"); isAdm = ia.data === true;   // shows the Admin button
-  const nn = await sb.from("notifications").select("*").eq("user_id", U.id).order("created_at", { ascending: false }).limit(30); N = nn.data || [];
-  const qq = await sb.from("requests").select("*").or(`requester_id.eq.${U.id},provider_id.eq.${U.id}`).order("created_at", { ascending: false }).limit(50); Q = qq.data || [];
-  const m = await sb.from("messages").select("*").eq("to_user", U.id).order("created_at", { ascending: false }).limit(50);
-  M = m.data || []; if (!P) edit = true; draw();
-  const unread = M.filter(x => !x.is_read).map(x => x.id);   // mark as read after showing the "new" highlight
-  if (unread.length) sb.from("messages").update({ is_read: true }).in("id", unread);
-}
-const rateOf = id => { const r = R[id]; if (!r) return `<small style="color:var(--muted)">No reviews yet</small>`; const n = Math.round(r.avg_rating);
-  return `<span class="stars">${"★".repeat(n)}${"☆".repeat(5 - n)}</span> <small>${Number(r.avg_rating).toFixed(1)} (${r.review_count} review${r.review_count === 1 ? "" : "s"})</small>` };
-const grab = () => { if (!pj || !$("pj-title")) return; pj.title = $("pj-title").value; pj.description = $("pj-desc").value; pj.github_url = $("pj-gh").value; pj._vl = $("pj-video").value };
-function projPanel() {
-  const old = (pj && pj.video_url) || "", ext = old && !old.includes("/storage/v1/");
-  const form = pj ? `<form id="pjf" class="stack" novalidate style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px"><h3 style="margin:0">${pj.id ? "Edit project" : "New sample project"}</h3>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>My account – Campus Skill</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="favicon-192.png" type="image/png" sizes="192x192">
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#4338CA">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="stylesheet.css?v=6">
+</head>
+
+<body>
+  <header id="subhdr"></header>
+  <main class="page">
+    <div class="wrap" id="root">
+      <p class="msg" id="msg" role="status"></p>
+    </div>
+  </main>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="config.js?v=6"></script>
+  <script src="app.js?v=6"></script>
+  <script>
+    const { sb, $, esc, ini, toast } = CS;
+    const qs = new URLSearchParams(location.search);
+    let U, P, S = [], M = [], J = [], R = {}, PT = {};
+    let V = "profile", pj = null, pjNew = [], pjVid = null, edit = false, adding = false, isAdm = false;
+    let chatWith = qs.get("chat"), msgOn = true, timer = null, sig = "", sending = false;
+    const imgsOf = s => (s || "").split(",").map(u => u.trim()).filter(Boolean);
+    const OPT = [["phone", "Phone"], ["college", "College"], ["address", "Address"], ["department", "Department"], ["bio", "Short bio"]];   // optional details
+    const F = [["full_name", "Full name"]];   // required
+    const NLV = "__other";
+
+    /* ---------- start ---------- */
+    (async () => {
+      if (!CS.ok) { $("msg").className = "msg err"; $("msg").textContent = "Add your Supabase URL and anon key in config.js first."; return }
+      const s = await CS.session();
+      if (!s) { location.href = "login.html?next=" + encodeURIComponent("profile.html" + location.search + location.hash); return }
+      U = s.user;
+      const st = await CS.settings(); msgOn = st.messages_enabled !== false;
+      if (chatWith && !location.hash) location.hash = "messages";
+      await load();
+      window.addEventListener("hashchange", setView);
+    })();
+    async function load() {
+      P = await CS.profile(U.id);
+      const [sk, pr, ia] = await Promise.all([
+        sb.from("skills").select("*").eq("user_id", U.id).order("created_at", { ascending: false }),
+        sb.from("projects").select("*").eq("user_id", U.id).order("created_at", { ascending: false }),
+        sb.rpc("is_admin")]);   // shows the Admin button
+      S = sk.data || []; J = pr.data || []; isAdm = ia.data === true;
+      R = {}; if (S.length) { const rr = await sb.from("skill_ratings").select("*").in("skill_id", S.map(x => x.id)); (rr.data || []).forEach(x => R[x.skill_id] = x) }
+      await loadMessages();
+      if (!P) edit = true;
+      setView();
+    }
+    function setView() {
+      let v = CS.viewOf(location.hash.slice(1));
+      if (!P) v = "profile";   // finish your profile first
+      if (v !== V) { if (V === "messages") chatWith = null; pj = null; pjNew = []; pjVid = null; adding = false; sig = "" }
+      V = v; clearInterval(timer);
+      if (V === "messages") {
+        timer = setInterval(poll, 6000);
+        if (chatWith) openChat(chatWith); else render();
+      } else render();
+      window.scrollTo(0, 0);
+    }
+    const render = () => ({ profile: drawProfile, projects: drawProjects, skills: drawSkills, messages: drawMessages })[V]();
+
+    /* ---------- shared bits ---------- */
+    const rateOf = id => {
+      const r = R[id]; if (!r) return `<small style="color:var(--muted)">No reviews yet</small>`; const n = Math.round(r.avg_rating);
+      return `<span class="stars">${"★".repeat(n)}${"☆".repeat(5 - n)}</span> <small>${Number(r.avg_rating).toFixed(1)} (${r.review_count} review${r.review_count === 1 ? "" : "s"})</small>`
+    };
+    const none = t => `<p class="sub" style="margin:14px 0 0">${t}</p>`;
+
+    /* =====================  1. PROFILE  ===================== */
+    function drawProfile() {
+      const p = P || { email: U.email };
+      const av = p.avatar_url ? `<img class="bigav" src="${esc(p.avatar_url)}" alt="Profile photo">` : `<span class="bigav" aria-hidden="true">${esc(ini(p.full_name || U.email))}</span>`;
+      const view = `<div class="dl"><div><small>Email</small><b>${esc(p.email)}</b></div>${F.slice(1).concat(OPT).map(([k, l]) => `<div><small>${l}</small><b>${esc(p[k] || "—")}</b></div>`).join("")}</div>`;
+      const fld = ([k, l]) => `<div class="${["address", "full_name", "phone", "college", "bio"].includes(k) ? "full" : ""}"><label for="${k}">${l}</label>${k === "phone" ? `<div class="pin"><span aria-hidden="true">+91</span><input id="phone" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="10-digit mobile number" value="${esc(String(p.phone || "").replace(/\D/g, "").slice(-10))}"></div>` : k === "bio" || k === "address" ? `<textarea id="${k}" style="min-height:90px">${esc(p[k] || "")}</textarea>` : `<input id="${k}" value="${esc(p[k] || "")}"${k === "phone" ? ' type="tel" inputmode="numeric" maxlength="10"' : ""}>`}</div>`;
+      const form = `<form id="pf" class="stack" novalidate><div><label for="photo">Profile photo</label><input id="photo" type="file" accept="image/*"><div id="photoPrev"></div></div>
+    <div class="fgrid"><div class="full"><label for="email">Email (cannot be changed)</label><input id="email" value="${esc(p.email)}" disabled></div>
+    ${F.concat(OPT).map(fld).join("")}</div>
+    <button class="btn btn-p" type="submit">Save details</button></form>`;
+      $("root").innerHTML = `<div class="panel pw"><div class="pr-head">${av}
+    <div style="flex:1;min-width:200px"><h1>${esc(p.full_name || "Complete your profile")}</h1><p class="sub" style="margin:0 0 8px">${esc(p.college || "")}</p><span class="badge g">✓ Verified student</span></div>
+    <div class="chan">${isAdm ? `<a class="btn btn-a btn-sm" href="admin.html">Admin dashboard</a>` : ""}<button class="btn btn-o btn-sm" data-a="edit">${edit && P ? "Done editing" : "✎ Edit profile"}</button><button class="btn btn-o btn-sm" data-a="out">Log out</button></div></div>
+    ${edit ? form : view}</div>`;
+    }
+    async function saveProfile() {
+      const row = { id: U.id, email: U.email }; F.concat(OPT).forEach(([k]) => row[k] = $(k).value.trim());
+      if (F.some(([k]) => !row[k])) return toast("Enter your full name.");
+      if (row.phone && !/^[0-9]{10}$/.test(row.phone)) return toast("Phone number must be exactly 10 digits (numbers only), or leave it empty.");
+      row.phone = row.phone ? "+91" + row.phone : null;   // optional; stored as +91XXXXXXXXXX
+      const f = $("photo").files[0]; row.avatar_url = P?.avatar_url || null;
+      if (f) {
+        if (f.size > 2e6) return toast("Photo must be under 2 MB.");
+        const path = U.id + "/avatar", up = await sb.storage.from("avatars").upload(path, f, { upsert: true, contentType: f.type });
+        if (up.error) return toast(up.error.message);
+        row.avatar_url = sb.storage.from("avatars").getPublicUrl(path).data.publicUrl + "?t=" + Date.now();
+      }
+      const { error } = await sb.from("profiles").upsert(row);
+      if (error) return toast(error.message);
+      toast("Profile saved."); edit = false; await load();
+    }
+
+    /* =====================  2. PROJECTS  ===================== */
+    const grab = () => { if (!pj || !$("pj-title")) return; pj.title = $("pj-title").value; pj.description = $("pj-desc").value; pj.github_url = $("pj-gh").value; pj._vl = $("pj-video").value };
+    function drawProjects() {
+      const old = (pj && pj.video_url) || "", ext = old && !old.includes("/storage/v1/");
+      const form = pj ? `<form id="pjf" class="stack" novalidate style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px"><h3 style="margin:0">${pj.id ? "Edit project" : "New sample project"}</h3>
     <div><label for="pj-title">Project title</label><input id="pj-title" maxlength="80" value="${esc(pj.title || "")}"></div>
     <div><label for="pj-desc">Description</label><textarea id="pj-desc" maxlength="600" placeholder="What did you build and which tools did you use?">${esc(pj.description || "")}</textarea></div>
     <div><label for="pj-gh">GitHub link (optional)</label><input id="pj-gh" type="url" placeholder="https://github.com/you/project" value="${esc(pj.github_url || "")}"></div>
     <div><label for="pj-video">Video link (optional: YouTube or a direct .mp4 link)</label><input id="pj-video" type="url" value="${esc(pj._vl !== undefined ? pj._vl : (ext ? old : ""))}"></div>
-    <div><label for="pj-vfile">Or upload a video (mp4 or webm, up to 20 MB)</label><input id="pj-vfile" type="file" accept="video/mp4,video/webm">${old ? `<label style="font-weight:500;margin-top:8px"><input type="checkbox" id="pj-rmvid" style="width:auto;min-height:0"> Remove the current video</label>` : ""}</div>
+    <div><label for="pj-vfile">Or upload a video (mp4 or webm, up to 20 MB)</label><input id="pj-vfile" type="file" accept="video/mp4,video/webm"><div id="pj-vprev"></div>${old ? `<label style="font-weight:500;margin-top:8px"><input type="checkbox" id="pj-rmvid" style="width:auto;min-height:0"> Remove the current video</label>` : ""}</div>
     <div><label for="pj-files">Pictures (up to 4 in total, 2 MB each)</label>
       ${pj.images.length ? `<div class="pj-imgs" style="margin-bottom:8px">${pj.images.map((u, i) => `<div style="position:relative"><img src="${esc(u)}" alt=""><button type="button" class="x" style="top:4px;right:4px;width:30px;height:30px" data-rmimg="${i}" aria-label="Remove picture">✕</button></div>`).join("")}</div>` : ""}
+      <div id="pj-prev" class="pj-imgs"></div>
       <input id="pj-files" type="file" accept="image/*" multiple></div>
     <div class="chan"><button class="btn btn-p" id="pj-save" type="submit">Save project</button><button class="btn btn-o" type="button" data-a="pjcancel">Cancel</button></div></form>` : "";
-  const items = J.length ? J.map(x => { const im = imgsOf(x.images);
-    return `<div class="sk"><div class="sk-h"><b>${esc(x.title)}</b><div class="chan"><button class="btn btn-o btn-sm" data-pjedit="${x.id}">Edit</button><button class="btn btn-o btn-sm" data-pjdel="${x.id}">Delete</button></div></div>
+      const items = J.length ? J.map(x => {
+        const im = imgsOf(x.images);
+        return `<div class="sk"><div class="sk-h"><b>${esc(x.title)}</b><div class="chan"><button class="btn btn-o btn-sm" data-pjedit="${x.id}">Edit</button><button class="btn btn-o btn-sm" data-pjdel="${x.id}">Delete</button></div></div>
       ${x.description ? `<p>${esc(x.description)}</p>` : ""}<div class="proj">${x.github_url ? `<a href="${esc(x.github_url)}" target="_blank" rel="noopener noreferrer">GitHub</a> ` : ""}${x.video_url ? "· 🎬 video " : ""}${im.length ? `· 🖼 ${im.length} picture${im.length === 1 ? "" : "s"}` : ""}</div>
-      ${im.length ? `<div class="pj-imgs">${im.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>` : ""}</div>` }).join("")
-    : `<p class="sub" style="margin:14px 0 0">No sample projects yet. Add one so people who need a service can see your work.</p>`;
-  return `<div class="panel pw"><div class="sk-h"><h2>My sample projects</h2><button class="btn btn-a btn-sm" data-a="pjnew">+ Add project</button></div>${items}${form}</div>`;
-}
-async function saveProject() {
-  const title = $("pj-title").value.trim(), description = $("pj-desc").value.trim(), gh = $("pj-gh").value.trim(), vl = $("pj-video").value.trim();
-  if (!title) return toast("Give the project a title.");
-  if (gh && !/^https:\/\/(www\.)?github\.com\//i.test(gh)) return toast("The GitHub link must start with https://github.com/");
-  if (vl && !/^https?:\/\//i.test(vl)) return toast("The video link must start with https://");
-  const imgs = [...pj.images], files = [...$("pj-files").files], vf = $("pj-vfile").files[0], rm = $("pj-rmvid") && $("pj-rmvid").checked;
-  if (imgs.length + files.length > 4) return toast("You can keep up to 4 pictures per project.");
-  if (files.some(f => f.size > 2e6)) return toast("Each picture must be under 2 MB.");
-  if (vf && vf.size > 2e7) return toast("The video file must be under 20 MB.");
-  const old = pj.video_url || "", ext = old && !old.includes("/storage/v1/");
-  $("pj-save").disabled = true; toast("Saving…");
-  const up = async f => {
-    const path = `${U.id}/${Date.now()}-${f.name.replace(/[^\w.-]/g, "_")}`, r = await sb.storage.from("projects").upload(path, f, { contentType: f.type });
-    if (r.error) throw new Error(/bucket not found/i.test(r.error.message) ? 'The "projects" storage bucket is missing. Run 5_storage_projects.sql in Supabase.' : r.error.message);
-    return sb.storage.from("projects").getPublicUrl(path).data.publicUrl;
-  };
-  try {
-    for (const f of files) imgs.push(await up(f));
-    let video = vl || (ext ? null : old) || null; if (rm && !vl) video = null; if (vf) video = await up(vf);
-    const row = { title, description: description || null, github_url: gh || null, video_url: video, images: imgs.join(",") || null };
-    const { error } = pj.id ? await sb.from("projects").update(row).eq("id", pj.id) : await sb.from("projects").insert({ ...row, user_id: U.id });
-    if (error) throw new Error(/relation|schema cache/i.test(error.message) ? "Run 4_ratings_projects.sql in Supabase first. (" + error.message + ")" : error.message);
-    CS.track("project_add"); pj = null; toast("Project saved."); await load();
-  } catch (err) { if ($("pj-save")) $("pj-save").disabled = false; toast(err.message) }
-}
-function notifPanel() {
-  const n = N.filter(x => !x.is_read).length;
-  return `<div class="panel pw" id="notifications"><div class="sk-h"><h2>Notifications ${n ? `<span class="badge">${n} new</span>` : ""}</h2>
-    <div class="chan">${N.length ? `<button class="btn btn-o btn-sm" data-a="nread">Mark all read</button><button class="btn btn-o btn-sm" data-a="nclear">Clear</button>` : ""}</div></div>
-    ${N.length ? N.map(x => `<div class="sk" style="${x.is_read ? "" : "border-color:var(--brand)"}"><div class="sk-h"><b>${esc(x.title)}</b><small style="color:var(--muted)">${esc(new Date(x.created_at).toLocaleString())}</small></div>${x.body ? `<p>${esc(x.body)}</p>` : ""}</div>`).join("")
-      : `<p class="sub" style="margin:14px 0 0">No notifications yet.</p>`}</div>`;
-}
-const badgeFor = s => `<span class="badge${s === "accepted" || s === "completed" ? " g" : ""}">${esc(s)}</span>`;
-function reqPanel() {
-  const got = Q.filter(x => x.provider_id === U.id), sent = Q.filter(x => x.requester_id === U.id);
-  const b = (id, st, label, cls) => `<button class="btn ${cls} btn-sm" data-rq="${id}" data-st="${st}">${label}</button>`;
-  const row = (x, mine) => `<div class="sk"><div class="sk-h"><b>${esc(x.skill_title || "Skill")}</b>${badgeFor(x.status)}</div>
-    <p>${mine ? "You asked for this skill" : "From " + esc(x.requester_name || "a student")}${x.note ? ": " + esc(x.note) : ""}</p>
-    <div class="chan">${mine ? (["pending", "accepted"].includes(x.status) ? b(x.id, "cancelled", "Cancel request", "btn-o") : "")
-      : x.status === "pending" ? b(x.id, "accepted", "Accept", "btn-p") + b(x.id, "declined", "Decline", "btn-o")
-      : x.status === "accepted" ? b(x.id, "completed", "Mark completed", "btn-p") : ""}</div></div>`;
-  const none = t => `<p class="sub" style="margin:10px 0 0">${t}</p>`;
-  return `<div class="panel pw" id="requests"><h2>Service requests</h2>
-    <h3 style="font-size:16px;margin:14px 0 0">Received</h3>${got.length ? got.map(x => row(x, false)).join("") : none("No one has requested your skills yet.")}
-    <h3 style="font-size:16px;margin:18px 0 0">Sent</h3>${sent.length ? sent.map(x => row(x, true)).join("") : none("You haven't requested a service yet. Open a student on the home page to request one.")}</div>`;
-}
-function draw() {
-  const p = P || { email: U.email };
-  const av = p.avatar_url ? `<img class="bigav" src="${esc(p.avatar_url)}" alt="Profile photo">` : `<span class="bigav" aria-hidden="true">${esc(ini(p.full_name || U.email))}</span>`;
-  const view = `<div class="dl"><div><small>Email</small><b>${esc(p.email)}</b></div>${F.slice(1).concat(OPT).map(([k, l]) => `<div><small>${l}</small><b>${esc(p[k] || "—")}</b></div>`).join("")}</div>`;
-  const pf = pfList(), box = u => `background:url('${esc(u)}') center/cover`;
-  const pfView = pf.length ? `<h3 style="margin:22px 0 10px">Portfolio</h3><div class="pf">${pf.map(u => `<div style="${box(u)}"></div>`).join("")}</div>` : "";
-  const pfEdit = `<div><label for="pfiles">Portfolio images (up to 8, 2 MB each)</label><div class="pf" style="margin-bottom:10px">${pf.map((u, i) => `<div style="${box(u)};position:relative"><button type="button" class="x" data-rmpf="${i}" aria-label="Remove image" style="top:4px;right:4px;width:30px;height:30px;font-size:14px">✕</button></div>`).join("")}</div><input id="pfiles" type="file" accept="image/*" multiple></div>`;
-  const form = `<form id="pf" class="stack" novalidate><div><label for="photo">Profile photo</label><input id="photo" type="file" accept="image/*"></div>
-    <div class="fgrid"><div class="full"><label for="email">Email (cannot be changed)</label><input id="email" value="${esc(p.email)}" disabled></div>
-    ${F.concat(OPT).map(([k, l]) => `<div class="${["address", "full_name", "college", "headline", "bio"].includes(k) ? "full" : ""}"><label for="${k}">${l}</label><input id="${k}" value="${esc(p[k] || "")}"></div>`).join("")}</div>
-    ${pfEdit}<button class="btn btn-p" type="submit">Save details</button></form>`;
-  const unread = M.filter(m => !m.is_read).length;
-  const msgs = M.length ? M.map(m => `<div class="sk" style="${m.is_read ? "" : "border-color:var(--brand)"}"><div class="sk-h"><b>${esc(m.from_name || "A student")}</b><small style="color:var(--muted)">${new Date(m.created_at).toLocaleString()}</small></div><p style="color:var(--ink);white-space:pre-wrap">${esc(m.body)}</p>${m.from_email ? `<a class="btn btn-o btn-sm" style="width:fit-content" href="mailto:${esc(m.from_email)}?subject=${encodeURIComponent("Re: your message on Campus Skill")}">Reply by email</a>` : ""}</div>`).join("") : `<p class="sub" style="margin:14px 0 0">No messages yet.</p>`;
-  const skills = S.length ? S.map(s => edit
-    ? `<div class="sk"><input id="t-${s.id}" value="${esc(s.title)}" aria-label="Skill title"><textarea id="d-${s.id}" aria-label="Description">${esc(s.description)}</textarea>
-       <div class="chan"><button class="btn btn-p btn-sm" data-save="${s.id}">Save skill</button><button class="btn btn-o btn-sm" data-del="${s.id}">Delete</button></div></div>`
-    : `<div class="sk"><div class="sk-h"><b>${esc(s.title)}</b><span class="badge">${esc(s.category)}</span></div><div>${rateOf(s.id)}</div><p>${esc(s.description)}</p></div>`).join("")
-    : `<p class="sub" style="margin:14px 0 0">No skills listed yet. Add your first one.</p>`;
-  $("root").innerHTML = `<div class="panel pw"><div class="pr-head">${av}
-    <div style="flex:1;min-width:200px"><h1>${esc(p.full_name || "Complete your profile")}</h1><p class="sub" style="margin:0 0 8px">${esc(p.college || "")}</p><span class="badge g">✓ Verified student</span></div>
-    <div class="chan">${isAdm ? `<a class="btn btn-a btn-sm" href="admin.html">Admin dashboard</a>` : ""}<button class="btn btn-o btn-sm" data-a="edit">${edit ? "Done editing" : "✎ Edit details & skills"}</button><button class="btn btn-o btn-sm" data-a="out">Log out</button></div></div>
-    ${edit ? form : view + pfView}</div>
-    ${notifPanel()}${reqPanel()}
-    <div class="panel pw"><div class="sk-h"><h2>My skills</h2><a class="btn btn-a btn-sm" href="skill.html">+ Add skill</a></div>${skills}</div>
-    ${projPanel()}
-    <div class="panel pw" id="messages"><div class="sk-h"><h2>Messages ${unread ? `<span class="badge">${unread} new</span>` : ""}</h2></div>${msgs}</div>`;
-}
-$("root").addEventListener("click", async e => {
-  const b = e.target.closest("button"); if (!b) return;
-  if (b.dataset.a === "edit") { if (!P) return toast("Save your details first."); edit = !edit; draw() }
-  if (b.dataset.a === "out") { await sb.auth.signOut(); location.href = "index.html" }
-  if (b.dataset.rmpf !== undefined) {
-    const list = pfList(), [gone] = list.splice(+b.dataset.rmpf, 1);
-    const { error } = await sb.from("profiles").update({ portfolio: list.join(",") }).eq("id", U.id);
-    if (error) return toast(error.message);
-    const key = (gone.split("/portfolio/")[1] || "").split("?")[0];
-    if (key) await sb.storage.from("portfolio").remove([decodeURIComponent(key)]);
-    P.portfolio = list.join(","); draw(); return;
-  }
-  if (b.dataset.a === "nread") { const { error } = await sb.from("notifications").update({ is_read: true }).eq("user_id", U.id).eq("is_read", false); if (error) return toast(error.message); N.forEach(x => x.is_read = true); draw(); return }
-  if (b.dataset.a === "nclear") { const { error } = await sb.from("notifications").delete().eq("user_id", U.id); if (error) return toast(error.message); N = []; draw(); return }
-  if (b.dataset.rq) { const { error } = await sb.from("requests").update({ status: b.dataset.st }).eq("id", b.dataset.rq); if (error) return toast(error.message); toast("Request " + b.dataset.st + "."); await load(); return }
-  if (b.dataset.a === "pjnew") { pj = { images: [] }; draw(); return }
-  if (b.dataset.a === "pjcancel") { pj = null; draw(); return }
-  if (b.dataset.pjedit) { const x = J.find(y => y.id === b.dataset.pjedit); pj = { ...x, images: imgsOf(x.images) }; draw(); return }
-  if (b.dataset.rmimg !== undefined) { grab(); pj.images.splice(+b.dataset.rmimg, 1); draw(); return }
-  if (b.dataset.pjdel && confirm("Delete this project?")) {
-    const x = J.find(y => y.id === b.dataset.pjdel), { error } = await sb.from("projects").delete().eq("id", x.id);
-    if (error) return toast(error.message);
-    const cut = "/storage/v1/object/public/projects/", keys = [...imgsOf(x.images), x.video_url || ""].filter(u => u.includes(cut)).map(u => decodeURIComponent(u.split(cut)[1].split("?")[0]));
-    if (keys.length) await sb.storage.from("projects").remove(keys);
-    J = J.filter(y => y.id !== x.id); draw(); toast("Project deleted."); return;
-  }
-  if (b.dataset.save) {
-    const id = b.dataset.save, title = $("t-" + id).value.trim(), description = $("d-" + id).value.trim();
-    if (!title || !description) return toast("Title and description can't be empty.");
-    const { error } = await sb.from("skills").update({ title, description }).eq("id", id);
-    toast(error ? error.message : "Skill updated."); if (!error) { const s = S.find(x => x.id === id); s.title = title; s.description = description }
-  }
-  if (b.dataset.del && confirm("Delete this skill?")) {
-    const { error } = await sb.from("skills").delete().eq("id", b.dataset.del);
-    if (error) return toast(error.message); S = S.filter(x => x.id !== b.dataset.del); draw(); toast("Skill deleted.");
-  }
-});
-$("root").addEventListener("submit", async e => {
-  e.preventDefault();
-  if (e.target.id === "pjf") return saveProject();
-  const row = { id: U.id, email: U.email }; F.concat(OPT).forEach(([k]) => row[k] = $(k).value.trim());
-  if (F.some(([k]) => !row[k])) return toast("Fill in every field.");
-  const f = $("photo").files[0]; row.avatar_url = P?.avatar_url || null;
-  if (f) {
-    if (f.size > 2e6) return toast("Photo must be under 2 MB.");
-    const path = U.id + "/avatar", up = await sb.storage.from("avatars").upload(path, f, { upsert: true, contentType: f.type });
-    if (up.error) return toast(up.error.message);
-    row.avatar_url = sb.storage.from("avatars").getPublicUrl(path).data.publicUrl + "?t=" + Date.now();
-  }
-  const list = pfList(), files = [...($("pfiles") ? $("pfiles").files : [])];
-  if (list.length + files.length > 8) return toast("You can keep up to 8 portfolio images.");
-  for (const f of files) {
-    if (f.size > 2e6) return toast(f.name + " is over 2 MB.");
-    const path = `${U.id}/${Date.now()}-${f.name.replace(/[^\w.-]/g, "_")}`, r = await sb.storage.from("portfolio").upload(path, f, { contentType: f.type });
-    if (r.error) return toast(r.error.message);
-    list.push(sb.storage.from("portfolio").getPublicUrl(path).data.publicUrl);
-  }
-  row.portfolio = list.join(",");
-  const { error } = await sb.from("profiles").upsert(row);
-  if (error) return toast(error.message);
-  toast("Profile saved."); await load();
-});
-</script></body></html>
+      ${im.length ? `<div class="pj-imgs">${im.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>` : ""}</div>`
+      }).join("") : none("No sample projects yet. Add one so people who need a service can see your work.");
+      $("root").innerHTML = `<div class="panel pw"><div class="sk-h"><h2>My sample projects</h2>${pj ? "" : `<button class="btn btn-a btn-sm" data-a="pjnew">+ Add project</button>`}</div>${items}${form}</div>`;
+      if (pj) drawPrev();
+    }
+    // ---- picked files: thumbnail / name with a ✕ so a wrong file can be removed without redoing the form
+    const blobOf = f => f._u || (f._u = URL.createObjectURL(f));
+    const sizeOf = n => n >= 1e6 ? (n / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1e3)) + " KB";
+    function drawPrev() {
+      const a = $("pj-prev"), v = $("pj-vprev"); if (!a || !v) return;
+      a.innerHTML = pjNew.map((f, i) => `<div style="position:relative"><img src="${blobOf(f)}" alt="Selected picture"><button type="button" class="x" style="top:4px;right:4px;width:30px;height:30px" data-rmnew="${i}" aria-label="Remove this picture">✕</button></div>`).join("");
+      v.innerHTML = pjVid ? `<div class="filechip">🎬 <span>${esc(pjVid.name)} · ${sizeOf(pjVid.size)}</span><button type="button" class="btn btn-o btn-sm" data-a="rmvfile">✕ Remove</button></div>` : "";
+    }
+    function showPhoto() {
+      const f = $("photo") && $("photo").files[0], box = $("photoPrev"); if (!box) return;
+      box.innerHTML = f ? `<div class="filechip"><img src="${blobOf(f)}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover"><span>${esc(f.name)} · ${sizeOf(f.size)}</span><button type="button" class="btn btn-o btn-sm" data-a="rmphoto">✕ Remove</button></div>` : "";
+    }
+    async function saveProject() {
+      const title = $("pj-title").value.trim(), description = $("pj-desc").value.trim(), gh = $("pj-gh").value.trim(), vl = $("pj-video").value.trim();
+      if (!title) return toast("Give the project a title.");
+      if (gh && !/^https:\/\/(www\.)?github\.com\//i.test(gh)) return toast("The GitHub link must start with https://github.com/");
+      if (vl && !/^https?:\/\//i.test(vl)) return toast("The video link must start with https://");
+      const imgs = [...pj.images], files = [...pjNew], vf = pjVid, rm = $("pj-rmvid") && $("pj-rmvid").checked;
+      if (imgs.length + files.length > 4) return toast("You can keep up to 4 pictures per project.");
+      if (files.some(f => f.size > 2e6)) return toast("Each picture must be under 2 MB.");
+      if (vf && vf.size > 2e7) return toast("The video file must be under 20 MB.");
+      const old = pj.video_url || "", ext = old && !old.includes("/storage/v1/");
+      $("pj-save").disabled = true; toast("Saving…");
+      const up = async f => {
+        const path = `${U.id}/${Date.now()}-${f.name.replace(/[^\w.-]/g, "_")}`, r = await sb.storage.from("projects").upload(path, f, { contentType: f.type });
+        if (r.error) throw new Error(/bucket not found/i.test(r.error.message) ? 'The "projects" storage bucket is missing. Run backend/02_storage.sql in Supabase.' : r.error.message);
+        return sb.storage.from("projects").getPublicUrl(path).data.publicUrl;
+      };
+      try {
+        for (const f of files) imgs.push(await up(f));
+        let video = vl || (ext ? null : old) || null; if (rm && !vl) video = null; if (vf) video = await up(vf);
+        const row = { title, description: description || null, github_url: gh || null, video_url: video, images: imgs.join(",") || null };
+        const { error } = pj.id ? await sb.from("projects").update(row).eq("id", pj.id) : await sb.from("projects").insert({ ...row, user_id: U.id });
+        if (error) throw new Error(/relation|schema cache/i.test(error.message) ? "Run backend/01_schema.sql in Supabase first. (" + error.message + ")" : error.message);
+        CS.track("project_add"); pj = null; pjNew = []; pjVid = null; toast("Project saved."); await load();
+      } catch (err) { if ($("pj-save")) $("pj-save").disabled = false; toast(err.message) }
+    }
+
+    /* =====================  3. SKILLS  ===================== */
+    function drawSkills() {
+      const addForm = adding ? `<form id="skf" class="stack" novalidate style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px"><h3 style="margin:0">Add a skill</h3>
+    <div><label for="sk-cat">Skill</label><select id="sk-cat"><option value="">Choose a skill…</option>${CS.SKILLS.map(s => `<option>${esc(s)}</option>`).join("")}<option value="${NLV}">Not listed skill</option></select></div>
+    <div id="sk-cbox" hidden><label for="sk-custom">Your skill name</label><input id="sk-custom" maxlength="60" placeholder="e.g. Podcast editing"></div>
+    <div><label for="sk-desc">Description</label><textarea id="sk-desc" maxlength="600" placeholder="What you offer, your experience, tools, and rough pricing."></textarea></div>
+    <div class="chan"><button class="btn btn-p" id="sk-save" type="submit">Add skill</button><button class="btn btn-o" type="button" data-a="skcancel">Cancel</button></div></form>` : "";
+      const list = S.length ? S.map(s => `<div class="sk"><div class="sk-h"><span class="badge">${esc(s.category)}</span><div>${rateOf(s.id)}</div></div>
+    <input id="t-${s.id}" value="${esc(s.title)}" maxlength="60" aria-label="Skill title"><textarea id="d-${s.id}" maxlength="600" aria-label="Description">${esc(s.description)}</textarea>
+    <div class="chan"><button class="btn btn-p btn-sm" data-save="${s.id}">Save changes</button><button class="btn btn-o btn-sm" data-del="${s.id}">Remove</button></div></div>`).join("")
+        : none("No skills listed yet. Add your first one.");
+      $("root").innerHTML = `<div class="panel pw"><div class="sk-h"><h2>My skills</h2>${adding ? "" : `<button class="btn btn-a btn-sm" data-a="sknew">+ Add skill</button>`}</div>${addForm}${list}</div>`;
+    }
+    async function addSkill() {
+      const v = $("sk-cat").value, custom = $("sk-custom").value.trim(), description = $("sk-desc").value.trim();
+      if (!v) return toast("Choose a skill from the list.");
+      if (v === NLV && !custom) return toast("Type the name of your skill.");
+      if (description.length < 10) return toast("Add a short description (at least 10 characters).");
+      $("sk-save").disabled = true;
+      const category = v === NLV ? "Other" : v;
+      const { error } = await sb.from("skills").insert({ user_id: U.id, category, title: v === NLV ? custom : v, description });
+      if (error) { $("sk-save").disabled = false; return toast(error.message) }
+      CS.track("skill_add", { category }); adding = false; toast("Skill added."); await load();
+    }
+
+    /* =====================  4. MESSAGES (WhatsApp style)  ===================== */
+    async function loadMessages() {
+      const { data, error } = await sb.from("messages").select("*").or(`from_user.eq.${U.id},to_user.eq.${U.id}`).order("created_at", { ascending: false }).limit(1000);
+      if (error) return false;
+      M = (data || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      const ids = [...new Set(M.map(x => x.from_user === U.id ? x.to_user : x.from_user))].filter(i => !PT[i]);
+      if (ids.length) { const r = await sb.from("students").select("id,full_name,avatar_url").in("id", ids); (r.data || []).forEach(x => PT[x.id] = { name: x.full_name, av: x.avatar_url }) }
+      CS.setUnread(M.filter(x => x.to_user === U.id && !x.is_read).length);
+      return true;
+    }
+    const nameOf = (id, msgs) => (PT[id] && PT[id].name) || ((msgs || []).find(x => x.from_user === id) || {}).from_name || "Student";
+    function convs() {
+      const m = {};
+      M.forEach(x => { const o = x.from_user === U.id ? x.to_user : x.from_user; (m[o] = m[o] || { id: o, msgs: [] }).msgs.push(x) });
+      if (chatWith && !m[chatWith]) m[chatWith] = { id: chatWith, msgs: [] };   // a chat opened by link, before any message
+      return Object.values(m).map(c => {
+        c.last = c.msgs[c.msgs.length - 1] || null; c.name = nameOf(c.id, c.msgs); c.av = PT[c.id] && PT[c.id].av;
+        c.unread = c.msgs.filter(x => x.to_user === U.id && !x.is_read).length; return c;
+      }).sort((a, b) => (b.last ? +new Date(b.last.created_at) : Infinity) - (a.last ? +new Date(a.last.created_at) : Infinity));
+    }
+    const avOf = (c, i) => c.av ? `<img class="cav" src="${esc(c.av)}" alt="">` : `<span class="cav" aria-hidden="true">${esc(ini(c.name))}</span>`;
+    const clock = d => new Date(d).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
+    const dayName = d => { const y = new Date(); y.setDate(y.getDate() - 1); return sameDay(d, new Date()) ? "Today" : sameDay(d, y) ? "Yesterday" : new Date(d).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" }) };
+    const listTime = d => sameDay(d, new Date()) ? clock(d) : dayName(d) === "Yesterday" ? "Yesterday" : new Date(d).toLocaleDateString([], { day: "numeric", month: "short" });
+
+    function drawMessages() {
+      $("root").innerHTML = `<div class="panel pw wide"><div class="chat${chatWith ? " open" : ""}" id="chat">
+    <aside class="cl"><div class="cl-h"><h2>Messages</h2><input id="cq" type="search" placeholder="Search chats" aria-label="Search chats"></div><div class="cl-list" id="convList"></div></aside>
+    <section class="ct" id="ct"></section></div></div>`;
+      updateList(); drawThread();
+    }
+    function updateList() {
+      const box = $("convList"); if (!box) return;
+      const q = ($("cq") && $("cq").value || "").toLowerCase().trim();
+      const cs = convs().filter(c => !q || c.name.toLowerCase().includes(q));
+      box.innerHTML = cs.length ? cs.map((c, i) => `<button class="ci${c.id === chatWith ? " on" : ""}${c.unread ? " un" : ""}" data-chat="${esc(c.id)}">${avOf(c, i)}
+      <span class="ci-m"><span class="ci-t"><b>${esc(c.name)}</b>${c.last ? `<small>${esc(listTime(c.last.created_at))}</small>` : ""}</span>
+      <span class="ci-p"><span>${c.last ? (c.last.from_user === U.id ? "You: " : "") + esc(c.last.body.replace(/\s+/g, " ")) : "Say hello 👋"}</span>${c.unread ? `<em class="ub">${c.unread}</em>` : ""}</span></span></button>`).join("")
+        : `<p class="sub" style="padding:16px;margin:0">${M.length ? "No chats match your search." : "No conversations yet. Open a student on the home page and tap Contact Student to start one."}</p>`;
+    }
+    function drawThread() {
+      const ct = $("ct"); if (!ct) return;
+      if (!chatWith) { ct.innerHTML = `<div class="ct-empty"><div><div style="font-size:48px">💬</div><h3 style="margin:8px 0 4px;color:var(--ink)">Your messages</h3><p>Select a chat on the left to read and reply.</p></div></div>`; return }
+      const c = convs().find(x => x.id === chatWith) || { id: chatWith, msgs: [], name: nameOf(chatWith) };
+      ct.innerHTML = `<div class="ct-h"><button class="ct-back" data-a="chatback" aria-label="Back to chats">←</button>${avOf(c)}<div style="flex:1;min-width:0"><b>${esc(c.name)}</b><small>Campus Skill student</small></div><a class="btn btn-o btn-sm" href="index.html?view=${encodeURIComponent(c.id)}#projects" title="See this student's skills and sample projects">📁 Projects</a></div>
+    <div class="ct-body" id="ctBody"></div>
+    ${msgOn ? `<form class="cmp" id="cmp" novalidate><textarea id="cmpT" rows="1" maxlength="2000" placeholder="Type a message" aria-label="Type a message"></textarea><button class="send" id="cmpB" type="submit" aria-label="Send">➤</button></form>` : `<div class="cmp-off">Messaging is switched off right now.</div>`}`;
+      sig = ""; updateThread(true);
+    }
+    function updateThread(bottom) {
+      const body = $("ctBody"); if (!body || !chatWith) return;
+      const ms = M.filter(x => (x.from_user === chatWith && x.to_user === U.id) || (x.to_user === chatWith && x.from_user === U.id));
+      const s = ms.map(x => x.id + (x.is_read ? "r" : "u")).join(",");
+      if (s === sig && !bottom) return; sig = s;
+      const near = body.scrollHeight - body.scrollTop - body.clientHeight < 90;
+      let html = "", prev = null;
+      ms.forEach(x => {
+        if (!prev || !sameDay(prev, x.created_at)) html += `<div class="day">${esc(dayName(x.created_at))}</div>`;
+        prev = x.created_at; const me = x.from_user === U.id;
+        html += `<div class="bub${me ? " me" : ""}">${esc(x.body)}<small>${esc(clock(x.created_at))}${me ? ` <span class="${x.is_read ? "rd" : ""}">${x.is_read ? "✓✓" : "✓"}</span>` : ""}</small></div>`;
+      });
+      body.innerHTML = html || `<div class="ct-empty">No messages yet. Say hello 👋</div>`;
+      if (bottom || near) body.scrollTop = body.scrollHeight;
+    }
+    async function markRead(id) {
+      const un = M.filter(x => x.from_user === id && x.to_user === U.id && !x.is_read).map(x => x.id);
+      if (!un.length) return;
+      M.forEach(x => { if (un.includes(x.id)) x.is_read = true });
+      CS.setUnread(M.filter(x => x.to_user === U.id && !x.is_read).length);
+      await sb.from("messages").update({ is_read: true }).in("id", un);   // must be awaited, or the request is never sent
+    }
+    async function openChat(id) {
+      chatWith = id;
+      if (!PT[id]) { const r = await sb.from("students").select("id,full_name,avatar_url").eq("id", id).maybeSingle(); if (r.data) PT[id] = { name: r.data.full_name, av: r.data.avatar_url } }
+      if (!$("chat")) drawMessages();
+      $("chat").classList.add("open"); updateList(); drawThread(); markRead(id).then(updateList);
+    }
+    async function poll() {
+      if (V !== "messages" || document.hidden || sending) return;
+      if (!(await loadMessages())) return;
+      if (chatWith) await markRead(chatWith);
+      updateList(); updateThread(false);
+    }
+    async function sendChat() {
+      const t = $("cmpT"), text = t.value.trim();
+      if (!chatWith || !text || sending) return;
+      sending = true; $("cmpB").disabled = true;
+      const firstMsg = !M.some(x => x.from_user === chatWith || x.to_user === chatWith);   // first message to someone is also emailed to them
+      // send-message saves the message in the database; silent = true means no email (only the first message of a new chat is emailed)
+      const { data, error } = await sb.functions.invoke("send-message", { body: { student_id: chatWith, message: text, silent: !firstMsg } });
+      let reason = data && data.error;
+      if (error && !reason) { try { reason = (await error.context.json()).error } catch (_) { reason = error.message } }
+      sending = false; if ($("cmpB")) $("cmpB").disabled = false;
+      if (reason) return toast(reason);
+      t.value = ""; t.style.height = "auto"; CS.track("contact");
+      await loadMessages(); updateList(); updateThread(true); t.focus();
+    }
+    document.addEventListener("visibilitychange", () => { if (!document.hidden && V === "messages") poll() });
+
+    /* =====================  events  ===================== */
+    $("root").addEventListener("input", e => {
+      if (e.target.id === "phone") e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
+      if (e.target.id === "cq") updateList();
+      if (e.target.id === "cmpT") { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px" }
+    });
+    $("root").addEventListener("change", e => {
+      const t = e.target;
+      if (t.id === "sk-cat") { $("sk-cbox").hidden = t.value !== NLV; if (t.value === NLV) $("sk-custom").focus() }
+      if (t.id === "pj-files" && pj) {   // add pictures one batch at a time; each can be removed with its ✕
+        let room = 4 - pj.images.length - pjNew.length, big = 0, extra = 0;
+        for (const f of [...t.files]) { if (f.size > 2e6) big++; else if (room > 0) { pjNew.push(f); room-- } else extra++ }
+        t.value = ""; drawPrev();
+        if (big) toast("Pictures must be under 2 MB each. " + big + " skipped.");
+        else if (extra) toast("A project can have up to 4 pictures. " + extra + " skipped.");
+      }
+      if (t.id === "pj-vfile" && pj) {
+        const f = t.files[0]; t.value = "";
+        if (f && f.size > 2e7) toast("The video file must be under 20 MB."); else if (f) pjVid = f;
+        drawPrev();
+      }
+      if (t.id === "photo") showPhoto();
+    });
+    $("root").addEventListener("keydown", e => {   // Enter sends on a computer; on a phone Enter adds a new line
+      if (e.target.id === "cmpT" && e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer:coarse)").matches) { e.preventDefault(); sendChat() }
+    });
+    $("root").addEventListener("click", async e => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.chat) return openChat(b.dataset.chat);
+      if (b.dataset.a === "chatback") { chatWith = null; sig = ""; $("chat").classList.remove("open"); drawThread(); updateList(); return }
+      if (b.dataset.a === "edit") { if (!P) return toast("Save your details first."); edit = !edit; drawProfile() }
+      if (b.dataset.a === "out") { await sb.auth.signOut(); location.href = "index.html" }
+      if (b.dataset.a === "sknew") { adding = true; drawSkills(); return }
+      if (b.dataset.a === "skcancel") { adding = false; drawSkills(); return }
+      if (b.dataset.a === "pjnew") { pj = { images: [] }; pjNew = []; pjVid = null; drawProjects(); return }
+      if (b.dataset.a === "pjcancel") { pj = null; pjNew = []; pjVid = null; drawProjects(); return }
+      if (b.dataset.pjedit) { const x = J.find(y => y.id === b.dataset.pjedit); pj = { ...x, images: imgsOf(x.images) }; pjNew = []; pjVid = null; drawProjects(); return }
+      if (b.dataset.rmnew !== undefined) { pjNew.splice(+b.dataset.rmnew, 1); drawPrev(); return }
+      if (b.dataset.a === "rmvfile") { pjVid = null; drawPrev(); return }
+      if (b.dataset.a === "rmphoto") { $("photo").value = ""; showPhoto(); return }
+      if (b.dataset.rmimg !== undefined) { grab(); pj.images.splice(+b.dataset.rmimg, 1); drawProjects(); return }
+      if (b.dataset.pjdel && confirm("Delete this project?")) {
+        const x = J.find(y => y.id === b.dataset.pjdel), { error } = await sb.from("projects").delete().eq("id", x.id);
+        if (error) return toast(error.message);
+        const cut = "/storage/v1/object/public/projects/", keys = [...imgsOf(x.images), x.video_url || ""].filter(u => u.includes(cut)).map(u => decodeURIComponent(u.split(cut)[1].split("?")[0]));
+        if (keys.length) await sb.storage.from("projects").remove(keys);
+        J = J.filter(y => y.id !== x.id); drawProjects(); toast("Project deleted."); return;
+      }
+      if (b.dataset.save) {
+        const id = b.dataset.save, title = $("t-" + id).value.trim(), description = $("d-" + id).value.trim();
+        if (!title || description.length < 10) return toast("Add a title and a description of at least 10 characters.");
+        const { error } = await sb.from("skills").update({ title, description }).eq("id", id);
+        toast(error ? error.message : "Skill updated."); if (!error) { const s = S.find(x => x.id === id); s.title = title; s.description = description }
+      }
+      if (b.dataset.del && confirm("Remove this skill?")) {
+        const { error } = await sb.from("skills").delete().eq("id", b.dataset.del);
+        if (error) return toast(error.message); S = S.filter(x => x.id !== b.dataset.del); drawSkills(); toast("Skill removed.");
+      }
+    });
+    $("root").addEventListener("submit", async e => {
+      e.preventDefault();
+      if (e.target.id === "pjf") return saveProject();
+      if (e.target.id === "skf") return addSkill();
+      if (e.target.id === "cmp") return sendChat();
+      if (e.target.id === "pf") return saveProfile();
+    });
+  </script>
+</body>
+
+</html>

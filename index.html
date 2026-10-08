@@ -5,11 +5,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Campus Skill – Discover & Exchange Student Skills</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="favicon-192.png" type="image/png" sizes="192x192">
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#4338CA">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="stylesheet.css">
+  <link rel="stylesheet" href="stylesheet.css?v=6">
 </head>
 
 <body>
@@ -26,13 +32,7 @@
         </svg>
         Campus Skill
       </a>
-      <div class="nsearch"><span aria-hidden="true">🔍</span><input id="navQ" type="search" placeholder="Search skills…"
-          aria-label="Search skills"></div>
       <button class="menu" id="menu" aria-label="Toggle menu" aria-expanded="false">☰</button>
-      <nav class="links" aria-label="Main">
-        <a class="l" href="#home">Home</a><a class="l" href="#explore">Explore Skills</a><a class="l" href="#clubs">For
-          Clubs</a><a class="l" href="#how">How It Works</a>
-      </nav>
       <div class="acts"><a class="btn btn-o btn-sm" id="loginBtn" href="login.html">Login</a><a class="btn btn-a btn-sm" id="profBtn" href="profile.html" style="display:none">Profile</a></div>
     </div>
   </header>
@@ -87,7 +87,7 @@
         <div class="steps">
           <div class="step"><em>1</em>
             <h3>Find a student</h3>
-            <p>Search by skill or category and check portfolios and bios.</p>
+            <p>Search by skill or category and check sample projects and bios.</p>
           </div>
           <div class="step"><em>2</em>
             <h3>Contact and agree</h3>
@@ -146,19 +146,6 @@
         <div class="svc" id="mSvc"></div>
       </div>
       <div id="pjBox" hidden><h3>Sample projects</h3><div class="pjs" id="mPj"></div></div>
-      <div id="pfBox">
-        <h3>Portfolio</h3>
-        <div class="pf" id="mPf"></div>
-      </div>
-      <div id="reqBox">
-        <h3>Request a service</h3>
-        <form class="cf" id="qf" novalidate>
-          <div><label for="rq-skill">Skill</label><select id="rq-skill"></select></div>
-          <div><label for="rq-note">What do you need? (optional)</label><textarea id="rq-note" maxlength="1000" placeholder="Describe the job, deadline and budget."></textarea></div>
-          <button class="btn btn-a" id="rq-send" type="submit">Send request</button>
-          <p id="rq-msg" role="status" style="font-weight:600;font-size:14px"></p>
-        </form>
-      </div>
       <div id="rvBox">
         <h3>Ratings &amp; reviews</h3>
         <div id="mRev"></div>
@@ -171,14 +158,11 @@
           <p id="rv-msg" role="status" style="font-weight:600;font-size:14px"></p>
         </form>
       </div>
-      <form class="cf" id="cf" novalidate>
+      <div class="cf" id="cf">
         <h3 style="margin:0">Message <span id="mFirst"></span></h3>
-        <p style="color:var(--muted);font-size:14px">Your message is emailed to the student, who can reply to you directly. You need to be logged in.</p>
-        <div><label for="cm">What do you need?</label><textarea id="cm"
-            placeholder="Describe the project, deadline, and budget."></textarea></div>
-        <button class="btn btn-p" id="csend" type="submit">Send message</button>
-        <p id="cerr" role="alert" style="color:#DC2626;font-weight:600;font-size:14px"></p>
-      </form>
+        <p style="color:var(--muted);font-size:14px">Opens your Messages page so you can chat with this student. You need to be logged in.</p>
+        <a class="btn btn-p" id="csend" href="login.html">💬 Open chat</a>
+      </div>
     </div>
   </dialog>
 
@@ -210,9 +194,9 @@
   </footer>
   <div class="toast" id="toast" role="status"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-  <script src="config.js"></script>
-  <script src="app.js"></script>
-  <script src="script.js"></script>
+  <script src="config.js?v=6"></script>
+  <script src="app.js?v=6"></script>
+  <script src="script.js?v=6"></script>
 </body>
 
 </html>
